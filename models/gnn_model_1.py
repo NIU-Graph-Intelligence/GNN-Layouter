@@ -4,9 +4,10 @@ import torch.nn.functional as F
 
 
 class GNN_Model_1(nn.Module):
-    def __init__(self, input_dim=53, hidden_channels=128): # 50 (one-hot) + 3 ( positional features )
+    def __init__(self, max_nodes=50, hidden_channels=128): # 50 (one-hot) + 1 ( positional features )
         super().__init__()
 
+        input_dim = max_nodes + 1
         # GNN layers
         self.conv1 = GCNConv(input_dim, hidden_channels) # 53 -> 64
         self.conv2 = GCNConv(hidden_channels, hidden_channels) # 64 -> 64
@@ -67,3 +68,5 @@ class GNN_Model_1(nn.Module):
         coords = coords_norm * radius
 
         return coords
+
+

@@ -37,14 +37,33 @@ def WS_graph_dataset(num_samples, num_nodes, nearest_neighbors, rewiring_probabi
         )
         merged_graph_dataset["WS_graphs"].append(G)
 
-def save_graph_dataset(save_dir="data/raw/graph_dataset"):
+def save_graph_dataset(save_dir="data/raw/graph_dataset", filename="merged_graph_dataset.pkl"):
     """
     Save the merged_graph_dataset dictionary to disk.
     """
     os.makedirs(save_dir, exist_ok=True)
-    file_path = os.path.join(save_dir, "merged_graph_dataset.pkl")
+    file_path = os.path.join(save_dir, filename)
     with open(file_path, "wb") as f:
         pickle.dump(merged_graph_dataset, f)
-    print(f"Graph dataset saved to {save_dir}")
+    print(f"Graph dataset saved to {file_path}")
 
 
+
+if __name__ == "__main__":
+    import argparse
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Generate graph datasets.")
+    parser.add_argument("--output", type=str, default="data/raw/graph_dataset", help="Output directory.")
+    parser.add_argument("--num_samples", type=int, default=500, help="Number of samples per graph type.")
+    parser.add_argument("--num_nodes", type=int, default=50, help="Number of nodes in the graph.")
+    args = parser.parse_args()
+
+    # Generate graphs
+    ER_graph_dataset(num_samples=args.num_samples, nodes=args.num_nodes)
+    WS_graph_dataset(num_samples=args.num_samples, num_nodes=args.num_nodes,
+                     nearest_neighbors=(2, 10), rewiring_probability=(0.4, 0.6))
+    BA_graph_dataset(num_samples=args.num_samples, num_nodes=args.num_nodes, num_edges=(2, 25))
+
+    # Save the dataset
+    save_graph_dataset(save_dir=args.output)

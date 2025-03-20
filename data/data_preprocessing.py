@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data, DataLoader
 import math
+import os
 
 def process_dictionary_data(adj_dict, coord_dict):
     processed_adj_matrices = []
@@ -26,34 +27,29 @@ def process_dictionary_data(adj_dict, coord_dict):
 def create_node_features(num_nodes):
     "Create node features including normalized indices and positional encoding"
     indices = torch.arange(num_nodes, dtype=torch.float32)
-    normalized_indices = 2 * math.pi * indices / num_nodes # Convert to angles
 
-    # Create Features: [normalized_index, sin, cos]
-    features = torch.zeros((num_nodes, 3))
-    features[:, 0] = indices / num_nodes # Normalized index
-    features[:, 1] = torch.sin(normalized_indices) # Sin component
-    features[:, 2] = torch.cos(normalized_indices) # Cos component
+    features = torch.zeros((num_nodes, 1))
+    features[:, 0] = indices
     return features
 
+
 def prepare_data(adj_matrices, coordinates):
-    "Modified data preparation with both one-hot encoding and enhanced node features"
 
     dataset = []
     for adj_mat, coords in zip(adj_matrices, coordinates):
-        # Convert adjacency matrix to edge indices
         edge_index = torch.from_numpy(np.array(adj_mat.nonzero())).long()
 
-        # Get number of nodes
         num_nodes = adj_mat.shape[0]
 
-        # Create one-hot encoding
-        one_hot = torch.eye(50)
+        one_hot = torch.zeros((num_nodes, num_nodes))
+        for i in range(num_nodes):
+            one_hot[i, i] = 1.0
 
-        # Create circular position features
+        # Create position features
         pos_features = create_node_features(num_nodes)
 
-        # Concatenate features [50+3 = 53 features]
-        x = torch.cat([one_hot, pos_features], dim=1) # Combined features
+        # Concatenate features - now should be exactly (num_nodes x 51)
+        x = torch.cat([one_hot, pos_features], dim=1)
 
         # Normalize coordinates
         coords = np.array(coords)
@@ -65,6 +61,7 @@ def prepare_data(adj_matrices, coordinates):
         # Create PyG Data object
         data = Data(x=x, edge_index=edge_index, y=y)
         dataset.append(data)
+
     return dataset
 
 def normalized_coordinates(coords):
