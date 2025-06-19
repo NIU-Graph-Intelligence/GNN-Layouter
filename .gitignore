@@ -172,3 +172,57 @@ cython_debug/
 *.png
 *.pkl
 *.h5
+
+# Exclude all .pt, .pkl, and .png files
+*.pt
+*.pkl
+*.png
+
+# Exclude PreviousFilesalltogether folder
+PreviousFilesalltogether/
+
+# Exclude specific files from utils folder
+utils/IGNN_visualization.py
+
+# Exclude specific files from root directory
+analyze_dataset.py
+dataset_FR.py
+functions.py
+layers.py
+models_PPI.py
+normalization.py
+readprocessedfile.py
+train_IGNN_FR.py
+train_IGNN_FT2.py
+utils.py
+ExperimentsHyperparameters.txt
+
+# Python general
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

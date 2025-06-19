@@ -1,5 +1,127 @@
-# Machine Learning Based Graph Visualization
+# GNN-Layouter
 
+A Graph Neural Network (GNN) based approach for generating and optimizing graph layouts, supporting multiple layout algorithms including Force-Directed and Circular layouts.
+
+## Features
+
+- **Graph Dataset Generation:** Generate synthetic graph data with different graph models (ER, WS, BA)
+- **Multiple Layout Algorithms:** 
+  - Force-Directed Layouts (FR and FA2)
+  - Circular Layouts (from previous implementation)
+- **Graph Processing:**
+  - Adjacency Matrix Generation
+  - Community Detection
+  - Layout Generation and Optimization
+- **Data Preprocessing:** Preprocess generated graph data for model training
+- **Model Training:** Train GNN models on preprocessed graph data
+
+## Project Structure
+
+```
+GNN-Layouter/
+├── data/
+│   ├── ForceDirectedLayouts.py   # Force-directed layout generation (FR and FA2)
+│   └── raw/
+│       ├── graph_dataset/        # Contains graph datasets
+│       ├── layouts/             # Generated layouts
+│       └── adjacency_matrices/  # Generated adjacency matrices
+└── utils/                      # Utility functions and visualization tools
+```
+
+## Layout Algorithms
+
+### Force-Directed Layouts
+The project implements two popular force-directed layout algorithms:
+
+1. **Fruchterman-Reingold (FR)** Layout
+   - Physics-based layout algorithm
+   - Balances attractive and repulsive forces between nodes
+   - Suitable for medium-sized graphs
+   - Generated using `ForceDirectedLayouts.py`
+
+2. **ForceAtlas2 (FA2)** Layout
+   - Continuous force-directed layout algorithm
+   - Better for preserving community structures
+   - Handles larger graphs efficiently
+   - Generated using `ForceDirectedLayouts.py`
+
+### Previous Layout Implementations
+- Circular layouts
+
+## Setup and Installation
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/NIU-Graph-Intelligence/GNN-Layouter
+cd GNN-Layouter
+```
+
+### 2. Create and Activate a Virtual Environment (Recommended)
+```bash
+# Create Virtual Environment
+python3 -m venv venv
+
+# Activate Virtual Environment
+venv\Scripts\activate      # Windows
+source venv/bin/activate   # macOS/Linux
+```
+
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### 1. Generating Force-Directed Layouts
+
+The `ForceDirectedLayouts.py` script supports generating different types of layouts:
+
+```bash
+# Generate all layout types (adjacency matrices, FR, and FA2)
+python ForceDirectedLayouts.py --generate-adj --generate-fr --generate-fa2
+
+# Generate only Fruchterman-Reingold layouts
+python ForceDirectedLayouts.py --generate-fr
+
+# Generate only ForceAtlas2 layouts
+python ForceDirectedLayouts.py --generate-fa2
+
+# Generate layouts with visualizations
+python ForceDirectedLayouts.py --generate-fr --generate-fa2 --visualize
+```
+
+### 2. Dataset
+The current project uses a dataset of community graphs (`community_graphs_dataset1024.pkl`) containing:
+- 1020 graphs
+- 40 nodes per graph
+- Community information for each node
+- Edge attributes and weights
+
+### 3. Output Files
+
+The script generates several types of output files:
+
+1. **Adjacency Matrices**: `data/raw/adjacency_matrices/Finaladjacency_matrix_1024.pkl`
+2. **Layout Files**:
+   - Initial Layouts: `data/raw/layouts/FinalInit_1024.pt`
+   - FR Layouts: `data/raw/layouts/FinalFR_1024.pt`
+   - FA2 Layouts: `data/raw/layouts/FinalFT2_1024.pt`
+
+## Requirements
+
+- Python 3.x
+- PyTorch
+- PyTorch Geometric
+- NetworkX
+- Matplotlib
+- NumPy
+
+## Note
+
+This repository currently focuses on Force-Directed layouts as an alternative to previously implemented layouts. The Force-Directed approach often provides more natural and aesthetically pleasing layouts, especially for graphs with community structures.
+
+# Machine Learning Based Graph Visualization
 
 This project generates synthetic graph datasets using various models like Erdős-Rényi (ER), Watts-Strogatz (WS), and Barabási-Albert (BA).
 
@@ -54,7 +176,7 @@ To generate the dataset, use the `generate_graph_data.sh` script. This script al
 Run the following command to generate graph data:
 
 ```bash
-bash generate_graph_data.sh --output <output_dir> --num_samples <num_samples> [--graph_type <graph_type>] [--num_nodes <num_nodes>] [--output_filename <output_filename>]
+./generate_graph_data.sh --output <output_dir> --num_samples <num_samples> [--graph_type <graph_type>] [--num_nodes <num_nodes>] [--output_filename <output_filename>]
 ```
 
 ### Arguments:
@@ -78,7 +200,7 @@ This script is designed to generate layouts and adjacency matrices for a given g
 To generate graph layouts and adjacency matrices from a given dataset, use the following command:
 
 ```bash
-bash generate_layout.sh --dataset <dataset_path> --layout_output <layout_output_dir> --adjacency_output <adjacency_output_dir> --layout <layout_type>
+./generate_layout_data.sh --dataset <dataset_path> --layout_output <layout_output_dir> --adjacency_output <adjacency_output_dir> --layout <layout_type>
 ```
 
 ### Arguments:
@@ -91,32 +213,9 @@ bash generate_layout.sh --dataset <dataset_path> --layout_output <layout_output_
   - `shell`: Generates a shell layout.
   - `kamada_kawai`: Generates a Kamada-Kawai layout.
 
-
-
 ## 3. Data Preprocessing
 
 ### Usage
 ```bash
 ./data_preprocessing.sh [options]
 ```
-
-### Arguments:
-- `--batch_id ID` : Specify a batch identifier (default: 'default')
-- `--adj_path PATH` : Path to adjacency matrices pickle file
-- `--layout_path PATH` : Path to layout pickle file
-- `--output_dir DIR` : Directory to save processed data (default: `data/processed`)
-- `--help` : Display help message and exit
-
-## 4. Model Training
-
-### Usage
-```bash
-./model_training.sh --batch_id <id> [options]
-```
-
-### Arguments:
-- `--model <name>` : Specify the model type (default: `GNN_Model_1`)
-- `--data_path <path>` : Path to input dataset (default: `data/processed/modelInput.pt`)
-- `--batch_size <num>` : Training batch size (default: 1)
-- `--help` : Display help message and exit
-
