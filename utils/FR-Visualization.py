@@ -21,7 +21,6 @@ from models.GCNFR import ForceGNN
 
 def visualize_all(
     ignn_weights,
-    frgnn_weights,
     forcegnn_weights,
     data_path,
     num_samples,
@@ -49,8 +48,8 @@ def visualize_all(
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # ─── Instantiate & load models ──────────────────────────────────────────
-    feature_dim = graphs[0].x.shape[1] + 2
-
+    feature_dim = graphs[0].x.shape[1]
+    print(feature_dim)
     # IGNN
     ignn = IGNN(
         nfeat    = feature_dim,
@@ -66,19 +65,22 @@ def visualize_all(
 
 
     #ForceGNN
+    print("\nInitializing ForceGNN:")
+    print(f"in_feat={feature_dim}, hidden_dim=64, out_feat=2, num_layers=4")
     forcegnn = ForceGNN(
         in_feat=feature_dim,
-        hidden_dim=128,
+        hidden_dim=64,
         out_feat=2,
-        num_layers=3,
+        num_layers=4,
     ).to(device)
+    print("Loading weights from:", forcegnn_weights)
     forcegnn.load_state_dict(torch.load(forcegnn_weights, map_location=device))
     forcegnn.eval()
     print("Loaded ForceGNN from", forcegnn_weights)
 
 
-    models      = [ignn, forcegnn]
-    model_names = ["IGNN", "ForceGNN"]
+    models      = [ forcegnn]
+    model_names = [ "ForceGNN"]
 
     # ─── Sample graphs ──────────────────────────────────────────────────────
     num_samples = min(num_samples, len(graphs))
@@ -99,9 +101,15 @@ def visualize_all(
     fig  = plt.figure(figsize=(5*cols, 5*num_samples))
     gs   = GridSpec(num_samples, cols, figure=fig)
 
-    for row, idx in enumerate(indices):
+    # Create a batch tensor for single graph visualization
+    batch = torch.zeros(max_nodes, dtype=torch.long, device=device)
 
+    for row, idx in enumerate(indices):
+        print(f"\nProcessing graph {idx}")
+        
         data = graphs[idx].to(device)
+        print(f"Graph data: nodes={data.num_nodes}, edges={data.edge_index.size(1)}")
+        
         num_edges = data.edge_index.size(1)
         edge_weight = torch.ones(num_edges, dtype=torch.float).to(device)
 
@@ -109,7 +117,6 @@ def visualize_all(
         adj = torch.sparse.FloatTensor(
             data.edge_index,
             edge_weight,
-            # data.edge_attr.view(-1),
             (data.num_nodes, data.num_nodes)
         ).coalesce()
         rho = get_spectral_rad(adj)
@@ -118,20 +125,19 @@ def visualize_all(
 
         # ground-truth coords
         true = data.y.cpu().numpy()
-        print(data)
+        print(f"Ground truth shape: {true.shape}")
+
         # community coloring
         communities = comm_map[data.graph_id]
-        orig_ids    = data.orig_node_ids.cpu().tolist()
-        comm_labels = [communities[n] for n in orig_ids]   # shift from 0‐based to 1‐based
-
+        orig_ids = data.orig_node_ids.cpu().tolist()
+        comm_labels = [communities[n] for n in orig_ids]
+        
         newlist = []
         for n in comm_labels:
             newlist.append(int(n))
-
+        
         uniq = sorted(set(newlist))
-
-        # Use explicit distinct colors for better visualization
-        distinct_colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Blue, Orange, Green
+        distinct_colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
         c2i = {c:i for i,c in enumerate(uniq)}
         node_colors = [distinct_colors[c2i[c]] for c in newlist]
 
@@ -139,8 +145,9 @@ def visualize_all(
         G = nx.Graph()
         G.add_nodes_from(range(data.num_nodes))
         G.add_edges_from(data.edge_index.cpu().numpy().T)
+        print(f"NetworkX graph: nodes={G.number_of_nodes()}, edges={G.number_of_edges()}")
 
-        # ── Column 0: Ground Truth ────────────────────────────────────────────
+        # Ground Truth visualization
         ax = fig.add_subplot(gs[row, 0])
         pos_gt = {i: tuple(true[i]) for i in range(data.num_nodes)}
         nx.draw(G, pos=pos_gt, ax=ax,
@@ -148,38 +155,64 @@ def visualize_all(
                 node_size=80, width=0.5, alpha=0.8,
                 with_labels=False)
         ax.set_title(f"{data.graph_id}\nGround Truth")
-        ax.set_aspect('equal'); ax.axis('off')
+        ax.set_aspect('equal')
+        ax.axis('off')
 
-        # ── Columns 1–3: predictions ─────────────────────────────────────────
+        # Model predictions
         for col, (m, name) in enumerate(zip(models, model_names), start=1):
+            print(f"\nProcessing model: {name}")
+            try:
+                if name == "IGNN":
+                    feat = torch.cat([data.x, data.init_coords], dim=1).T
+                    pred = m(feat, adj)
+                    print(f"IGNN prediction shape: {pred.shape}")
+                    pred = pred.detach().cpu().numpy()
+                elif name == "ForceGNN":
+                    # Debug input shapes
+                    print(f"Input shapes:")
+                    print(f"x shape: {data.x.shape}")
+                    print(f"edge_index shape: {data.edge_index.shape}")
+                    print(f"batch shape: {batch.shape}")
+                    print(f"init_coords shape: {data.init_coords.shape}")
+                    
+                    pred = m(data.x, data.edge_index, batch, data.init_coords)
+                    print(f"ForceGNN raw prediction shape: {pred.shape}")
+                    pred = pred.squeeze(0).detach().cpu().numpy()
+                    print(f"ForceGNN final prediction shape: {pred.shape}")
 
-            if name == "IGNN":
-                feat = torch.cat([data.x, data.init_coords], dim=1).T
-                pred = m(feat, adj).detach().cpu().numpy()
-            elif name == "ForceGNN":
-                # feat = torch.cat([data.x, data.init_coords], dim=1).T
-                pred = m(data.x, data.edge_index, data.init_coords).detach().cpu().numpy()
-            else:
-                # FRGNN and FRGAT want the whole Data object
-                pred = m(data).detach().cpu().numpy()
+                # normalize for display
+                p = pred - pred.mean(axis=0, keepdims=True)
+                print(f"After centering shape: {p.shape}")
+                
+                s = max(p[:,0].ptp(), p[:,1].ptp())
+                if s>1e-6: 
+                    p /= s
+                print(f"Final normalized shape: {p.shape}")
+                
+                pos_p = {i: tuple(p[i]) for i in range(data.num_nodes)}
+                print(f"Created position dictionary with {len(pos_p)} positions")
 
-
-            # normalize for display
-            p = pred - pred.mean(axis=0, keepdims=True)
-            s = max(p[:,0].ptp(), p[:,1].ptp())
-            if s>1e-6: p /= s
-            pos_p = {i: tuple(p[i]) for i in range(data.num_nodes)}
-
-            axp = fig.add_subplot(gs[row, col])
-            nx.draw(G, pos=pos_p, ax=axp,
-                    node_color=node_colors, edge_color='gray',
-                    node_size=80, width=0.5, alpha=0.8,
-                    with_labels=False)
-            axp.set_title(name)
-            axp.set_aspect('equal'); axp.axis('off')
+                axp = fig.add_subplot(gs[row, col])
+                nx.draw(G, pos=pos_p, ax=axp,
+                        node_color=node_colors, edge_color='gray',
+                        node_size=80, width=0.5, alpha=0.8,
+                        with_labels=False)
+                axp.set_title(name)
+                axp.set_aspect('equal')
+                axp.axis('off')
+            except Exception as e:
+                print(f"Error processing {name}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                # Create an empty subplot with error message
+                axp = fig.add_subplot(gs[row, col])
+                axp.text(0.5, 0.5, f"Error: {str(e)}", 
+                        ha='center', va='center', wrap=True)
+                axp.set_title(f"{name} (Failed)")
+                axp.axis('off')
 
     fig.tight_layout()
-    fig.savefig(os.path.join(output_dir, "HC64comparison_grid.png"),
+    fig.savefig(os.path.join(output_dir, "HC64comparison_gridBatchWithInitialCoordinatesOnlyNode40.png"),
                 dpi=300, bbox_inches='tight')
     plt.close(fig)
     print("Saved comparison_grid.png in", output_dir)
@@ -187,17 +220,13 @@ def visualize_all(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Compare GT vs IGNN vs FRGNN vs FRGAT"
+        description="Compare GT vs IGNN vs FORCEGNN"
     )
     parser.add_argument('--ignn',   type=str, default='IGNN_checkpoints/IGNN_bs16_ep1000HC64.pt',
                         help="Path to IGNN weights")
-    parser.add_argument('--frgnn',  type=str, default='results/metrics/FRGNN/FinalWeights_FRGNN_FR_batch128.pt',
-                        help="Path to FRGNN weights")
-    # parser.add_argument('--frgat',  type=str, default='results/metrics/FRGAT/FinalWeights_FRGAT_FR_batch128.pt',
-    #                     help="Path to FRGAT weights")
-    parser.add_argument('--forcegnn', type=str, default='results/metrics/ForceGNN/Weights_ForceGNN_FR_batch128.pt',
+    parser.add_argument('--forcegnn', type=str, default='results/metrics/ForceGNN/Weights_ForceGNN_FR_batch16InitialCoordinatesFeaturesOnly40Nodes.pt',
                         help="Path to ForceGNN weights")
-    parser.add_argument('--data',   type=str, default='data/processed/modelInput_FR1024.pt',
+    parser.add_argument('--data',   type=str, default='data/processed/modelInput_FRInitialCoordinatesFeaturesOnly40Nodes.pt',
                         help="Processed .pt dataset")
     parser.add_argument('--samples',type=int, default=5,
                         help="Number of graphs to visualize")
@@ -208,7 +237,6 @@ if __name__ == "__main__":
 
     visualize_all(
         ignn_weights=args.ignn,
-        frgnn_weights=args.frgnn,
         forcegnn_weights=args.forcegnn,
         data_path=args.data,
         num_samples=args.samples,

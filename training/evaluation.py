@@ -111,8 +111,21 @@ def fr_force_residual_loss(pred_pos, true_pos, lambda_coord = 1.0, lambda_pairwi
 #     return α * l_coord + β * l_stress + γ * l_repel
 
 def forceGNN_loss(pred_coords, true):
+    """
+    Compute MSE loss between predicted and true coordinates.
+    
+    Args:
+        pred_coords: Tensor of shape [batch_size, nodes_per_graph, 2]
+        true: Tensor of shape [batch_size * nodes_per_graph, 2]
+    """
+    batch_size = pred_coords.shape[0]
+    nodes_per_graph = pred_coords.shape[1]
+    
+    # Reshape predictions to match target shape
+    pred_coords_flat = pred_coords.reshape(-1, 2)
+    
     criterion = MSELoss()
-    loss = criterion(pred_coords, true)
+    loss = criterion(pred_coords_flat, true)
     return loss
 
 
@@ -125,12 +138,10 @@ def evaluate_forcegnn(model, loader, device):
         for batch in loader:
             try:
                 batch = batch.to(device)
-                pred_coords = model(batch.x, batch.edge_index, batch.init_coords)  # Model takes the entire batch
-
-                # Center the predicted coordinates
-                # pred_centered = pred_coords - pred_coords.mean(dim=0, keepdim=True)
-
-                # Calculate force residual loss
+                # Model takes the entire batch and returns [batch_size, nodes_per_graph, 2]
+                pred_coords = model(batch.x, batch.edge_index, batch.batch, batch.init_coords)
+                
+                # Calculate force residual loss with reshaped predictions
                 loss = forceGNN_loss(pred_coords, batch.original_y)
 
                 total_loss += loss.item()

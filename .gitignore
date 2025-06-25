@@ -226,3 +226,65 @@ wheels/
 *.swp
 *.swo
 .DS_Store
+
+# Image and document files
+*.png
+*.pdf
+*.jpg
+*.jpeg
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Specific files to ignore
+inspect_dataset.py
+inspect_weights.py
+evaluate_adapted_data.py
+readprocessedfile.py
+debug_test.py
+
+# Keep these files (negate the ignore)
+!data/data_preprocessing.py
+!data/dataset.py
+!data/ForceDirectedLayouts.py
+!data/generate_graph_data.py
+!data/generate_layout_data.py
+!data/Preprocessing_ForceDirected.py
+
+# Keep all model files
+!models/*.py
+
+# Keep all utils files except specific ones
+!utils/*.py
+
+# Keep all shell scripts
+!*.sh
+
+# Keep training files except specific ones
+!training/*.py
+training/evaluate_adapted_data.py
+
+# Data directories (keep structure, ignore contents)
+data/processed/*
+data/raw/*
+!data/processed/.gitkeep
+!data/raw/.gitkeep
+
+# Results directory (ignore contents)
+results/*
+!results/.gitkeep

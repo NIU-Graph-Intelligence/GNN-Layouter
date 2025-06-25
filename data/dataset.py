@@ -7,6 +7,7 @@ import numpy as np
 def data_loader(dataset, batch_size=128, splits=(0.7, 0.15, 0.15), random_state=42, val_batch_size=None, test_batch_size=None):
     """
     Split dataset into train, validation, and test sets with consistent splits.
+    Uses PyTorch Geometric's DataLoader for proper graph batching.
     
     Args:
         dataset: List of graph data objects
@@ -55,10 +56,25 @@ def data_loader(dataset, batch_size=128, splits=(0.7, 0.15, 0.15), random_state=
     print(f"  Val samples: {len(val_data)} ({len(val_data)/len(dataset):.1%})")
     print(f"  Test samples: {len(test_data)} ({len(test_data)/len(dataset):.1%})")
 
-    # Create data loaders
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=val_batch_size, shuffle=False)
-    test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=False)
+    # Create data loaders with proper graph batching
+    train_loader = DataLoader(
+        train_data, 
+        batch_size=batch_size, 
+        shuffle=True,
+        follow_batch=['x', 'edge_index', 'init_coords', 'original_y']  # Track batch assignments for these attributes
+    )
+    val_loader = DataLoader(
+        val_data, 
+        batch_size=val_batch_size, 
+        shuffle=False,
+        follow_batch=['x', 'edge_index', 'init_coords', 'original_y']
+    )
+    test_loader = DataLoader(
+        test_data, 
+        batch_size=test_batch_size, 
+        shuffle=False,
+        follow_batch=['x', 'edge_index', 'init_coords', 'original_y']
+    )
 
     return train_loader, val_loader, test_loader
 

@@ -5,7 +5,7 @@ import sys
 import numpy as np
 from torch_geometric.data import Data
 import argparse
-
+from torch_geometric.utils import degree
 
 def process_community_data(adj_dict, layout_dict):
 
@@ -32,7 +32,6 @@ def process_community_data(adj_dict, layout_dict):
         graph_ids.append(graph_id)
 
     return processed_adj_matrices, processed_coordinates, processed_mappings, graph_ids
-
 
 def prepare_data(
     adj_matrices,
@@ -76,19 +75,25 @@ def prepare_data(
         edge_attr = torch.tensor(edge_weights, dtype=torch.float32).view(-1, 1)
 
         N = A.shape[0]
-        one_hot = torch.eye(N)
 
         # 2) community features
         unique_comms = sorted(set(community_tensor.tolist()))
         comm_to_idx = {c: i for i, c in enumerate(unique_comms)}
         C = len(unique_comms)
-
+        
         comm_feat = torch.zeros((N, C))
         for idx in range(N):
+            print(idx)
             comm = int(community_tensor[idx].item())
             comm_feat[idx, comm_to_idx[comm]] = 1.0
+        
+        
 
-        x = one_hot
+        # Compute node degrees
+        row, _ = edge_index
+        deg = degree(row, num_nodes=N, dtype=torch.float32).unsqueeze(1)  # Shape: [N, 1]
+
+        x = deg  # Only degree-based feature — generalizable across graph sizes
 
         # 3) coords
         original_coords   = coords.copy()
@@ -104,6 +109,7 @@ def prepare_data(
 
         # Initial coordinates
         init_tensor = init_coord_dict[graph_id]
+        
 
         data = Data(
             x=x,
@@ -122,6 +128,7 @@ def prepare_data(
 
 
     return dataset
+
 
 def main():
     parser = argparse.ArgumentParser(description='Process community FR/FA2 layouts for GNN training')
@@ -167,7 +174,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     out_file = os.path.join(
         args.output_dir,
-        f"modelInput_{args.layout_type}1024.pt"
+        f"modelInput_{args.layout_type}graphs1024_40Nodes.pt"
     )
 
     print(f"Saving processed data to {out_file}")

@@ -10,7 +10,7 @@ import argparse
 import sys
 
 # allow imports from your project root
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(PROJECT_ROOT)
 
 

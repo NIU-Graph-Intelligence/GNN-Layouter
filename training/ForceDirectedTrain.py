@@ -78,14 +78,11 @@ def train_model(model, train_loader, val_loader, batch_size, model_name, num_epo
             optimizer.zero_grad()
 
             # Forward pass - model now takes the entire batch
-            pred_coords = model(data.x, data.edge_index, data.init_coords)
+            pred_coords = model(data.x, data.edge_index, data.batch, data.init_coords)
             true = data.original_y.to(DEVICE)
 
             # Calculate loss
-            # loss = fr_force_residual_loss(pred_coords, true)
             loss = forceGNN_loss(pred_coords, true)
-            optimizer.step()
-            total_loss += loss.item()
             loss.backward()
             # Gradient clipping to prevent exploding gradients
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -148,10 +145,9 @@ def train_model(model, train_loader, val_loader, batch_size, model_name, num_epo
 def save_final_training_curves(epochs, train_losses, val_losses, learning_rates,
                                batch_size, best_model_path, layout_type, model_name, dataset=None, num_layers=4):
     try:
-        fig = plt.figure(figsize=(24, 20))  # Increased height for 4 rows
-        gs = plt.GridSpec(4, 3, figure=fig)  # 4 rows × 3 columns layout
-
-        ax_loss = fig.add_subplot(gs[:, 0])  # Left column (all 4 rows)
+        fig = plt.figure(figsize=(24, 20))  
+        gs = plt.GridSpec(4, 3, figure=fig)  
+        ax_loss = fig.add_subplot(gs[:, 0])
 
         # Axes for predictions and ground truths
         ax_preds = [fig.add_subplot(gs[i, 1]) for i in range(4)]
@@ -167,13 +163,12 @@ def save_final_training_curves(epochs, train_losses, val_losses, learning_rates,
         ax_loss.set_ylabel('Loss')
         ax_loss.legend()
         ax_loss.grid(True)
-
         in_channels = dataset[0].x.shape[1] + dataset[0].init_coords.shape[1]
 
         if model_name == 'ForceGNN':
             model_instance = ForceGNN(
                 in_feat=in_channels,
-                hidden_dim=128,
+                hidden_dim=64,  # Match the training hidden dimension
                 out_feat=2,
                 num_layers=num_layers,
             )
@@ -195,8 +190,15 @@ def save_final_training_curves(epochs, train_losses, val_losses, learning_rates,
 
             for i, idx in enumerate(sample_indices):
                 sample_data = dataset[idx].to(DEVICE)
+                
+                # Create batch tensor for single graph
+                if sample_data.batch is None:
+                    sample_data.batch = torch.zeros(sample_data.x.size(0), dtype=torch.long, device=DEVICE)
+                
                 with torch.no_grad():
-                    pred_coords = model_instance(sample_data.x, sample_data.edge_index, sample_data.init_coords)
+                    pred_coords = model_instance(sample_data.x, sample_data.edge_index, sample_data.batch, sample_data.init_coords)
+                    # For single graph, pred_coords will be [1, num_nodes, 2], so take first batch
+                    pred_coords = pred_coords.squeeze(0)
                     pred_coords = pred_coords - pred_coords.mean(dim=0, keepdim=True)
 
                 pred_coords_np = pred_coords.cpu().numpy()
@@ -282,11 +284,11 @@ def main():
                         help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=3000,
                         help='Maximum number of epochs')
-    parser.add_argument('--lr', type=float, default=0.0005,
+    parser.add_argument('--lr', type=float, default=0.0001,
                         help='Initial learning rate')
-    parser.add_argument('--hidden-channels', type=int, default=128,
+    parser.add_argument('--hidden-channels', type=int, default=64,
                         help='Number of hidden channels in the model')
-    parser.add_argument('--num-layers', type=int, default=3,
+    parser.add_argument('--num-layers', type=int, default=4,
                         help='Number of GNN layers')
 
     args = parser.parse_args()
@@ -299,6 +301,7 @@ def main():
 
         dataset = data_dict['dataset']
 
+        # print(dataset[0].x + dataset[0].init_coords)
         in_channels = dataset[0].x.shape[1] + dataset[0].init_coords.shape[1]
 
         # Create data loaders
