@@ -3,30 +3,10 @@ import os
 import torch
 from torch_geometric.data import Data, DataLoader
 import numpy as np
+from typing import List, Tuple, Optional
 
-def data_loader(dataset, batch_size=128, splits=(0.7, 0.15, 0.15), random_state=42, val_batch_size=None, test_batch_size=None):
-    """
-    Split dataset into train, validation, and test sets with consistent splits.
-    Uses PyTorch Geometric's DataLoader for proper graph batching.
-    
-    Args:
-        dataset: List of graph data objects
-        batch_size: Batch size for training data
-        splits: Tuple of (train_ratio, val_ratio, test_ratio) that sum to 1.0
-        random_state: Random seed for reproducibility
-        val_batch_size: Batch size for validation data (defaults to batch_size)
-        test_batch_size: Batch size for test data (defaults to batch_size)
-    
-    Returns:
-        train_loader: DataLoader for training data
-        val_loader: DataLoader for validation data
-        test_loader: DataLoader for test data
-    """
-    if val_batch_size is None:
-        val_batch_size = batch_size
-    if test_batch_size is None:
-        test_batch_size = batch_size
-        
+def _split_dataset(dataset, splits, random_state):
+   
     # Validate split ratios
     train_ratio, val_ratio, test_ratio = splits
     assert abs(sum(splits) - 1.0) < 1e-6, f"Split ratios must sum to 1.0, got {sum(splits)}"
@@ -43,38 +23,80 @@ def data_loader(dataset, batch_size=128, splits=(0.7, 0.15, 0.15), random_state=
         random_state=random_state
     )
     
-    # Second split: separate train and validation from remaining data
+    # Second split: separate train and validation
     train_data, val_data = train_test_split(
         train_val_data,
-        train_size=train_ratio/train_val_ratio,  # Adjust ratio for remaining data
+        train_size=train_ratio/train_val_ratio,
         random_state=random_state
     )
     
+    # Print split information
     print(f"Dataset splits:")
     print(f"  Total samples: {len(dataset)}")
     print(f"  Train samples: {len(train_data)} ({len(train_data)/len(dataset):.1%})")
     print(f"  Val samples: {len(val_data)} ({len(val_data)/len(dataset):.1%})")
     print(f"  Test samples: {len(test_data)} ({len(test_data)/len(dataset):.1%})")
+    
+    return train_data, val_data, test_data
 
-    # Create data loaders with proper graph batching
+def _create_data_loaders(train_data, val_data, test_data, batch_size, val_batch_size, test_batch_size, follow_attrs, shuffle_train = True):
+    
+    if val_batch_size is None:
+        val_batch_size = batch_size
+    if test_batch_size is None:
+        test_batch_size = batch_size
+        
     train_loader = DataLoader(
         train_data, 
         batch_size=batch_size, 
-        shuffle=True,
-        follow_batch=['x', 'edge_index', 'init_coords', 'original_y']  # Track batch assignments for these attributes
+        shuffle=shuffle_train,
+        follow_batch=follow_attrs
     )
+    
     val_loader = DataLoader(
         val_data, 
         batch_size=val_batch_size, 
         shuffle=False,
-        follow_batch=['x', 'edge_index', 'init_coords', 'original_y']
+        follow_batch=follow_attrs
     )
+    
     test_loader = DataLoader(
         test_data, 
         batch_size=test_batch_size, 
         shuffle=False,
-        follow_batch=['x', 'edge_index', 'init_coords', 'original_y']
+        follow_batch=follow_attrs
+    )
+    
+    return train_loader, val_loader, test_loader
+
+def circular_data_loader(dataset, batch_size = 32, splits= (0.8, 0.1, 0.1), random_state = 42, val_batch_size = None, test_batch_size = None):
+    
+    print("Setting up circular layout data loaders...")
+    
+    # Split dataset
+    train_data, val_data, test_data = _split_dataset(dataset, splits, random_state)
+    
+    # Create data loaders with circular layout specific attributes
+    return _create_data_loaders(
+        train_data, val_data, test_data,
+        batch_size, val_batch_size, test_batch_size,
+        follow_attrs=['x', 'edge_index', 'y']
     )
 
-    return train_loader, val_loader, test_loader
+def force_directed_data_loader(dataset, batch_size= 128, splits = (0.8, 0.1, 0.1), random_state = 42, val_batch_size = None, test_batch_size = None):
+   
+    print("Setting up force-directed layout data loaders...")
+    
+    # Split dataset
+    train_data, val_data, test_data = _split_dataset(dataset, splits, random_state)
+    
+    # Create data loaders with force-directed layout specific attributes
+    return _create_data_loaders(
+        train_data, val_data, test_data,
+        batch_size, val_batch_size, test_batch_size,
+        follow_attrs=['x', 'edge_index', 'init_coords', 'original_y']
+    )
+
+# For backward compatibility
+# data_loader = force_directed_data_loader
 

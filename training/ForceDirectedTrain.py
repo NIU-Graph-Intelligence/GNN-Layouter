@@ -67,7 +67,7 @@ def train_model(model, train_loader, val_loader, batch_size, model_name, num_epo
     current_dir = os.getcwd()
     save_dir = os.path.join(current_dir, 'results', 'metrics', model_name)
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, f'_{model_name}_bs{batch_size}_ep2000.pt')
+    save_path = os.path.join(save_dir, f'OneHotCustom{model_name}_bs{batch_size}_ep2000.pt')
 
     for epoch in range(num_epochs):
         model.train()
@@ -116,7 +116,7 @@ def train_model(model, train_loader, val_loader, batch_size, model_name, num_epo
                         'learning_rate': learning_rates
                     }
                     metrics_path = os.path.join(save_dir,
-                                                f'Final_training_metrics_{model_name}_{layout_type}_batch{batch_size}.pkl')
+                                                f'OneHotCustomFinal_training_metrics_{model_name}_{layout_type}_batch{batch_size}.pkl')
                     with open(metrics_path, 'wb') as f:
                         pickle.dump(metrics_data, f)
 
@@ -164,11 +164,11 @@ def save_final_training_curves(epochs, train_losses, val_losses, learning_rates,
         ax_loss.legend()
         ax_loss.grid(True)
         in_channels = dataset[0].x.shape[1] + dataset[0].init_coords.shape[1]
-
+        # in_channels = dataset[0].x.shape[1]
         if model_name == 'ForceGNN':
             model_instance = ForceGNN(
                 in_feat=in_channels,
-                hidden_dim=64,  # Match the training hidden dimension
+                hidden_dim=32,  # Match the training hidden dimension
                 out_feat=2,
                 num_layers=num_layers,
             )
@@ -220,7 +220,7 @@ def save_final_training_curves(epochs, train_losses, val_losses, learning_rates,
         current_dir = os.getcwd()
         save_dir = os.path.join(current_dir, 'results', 'plots', model_name)
         os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, f'Final_Results_{model_name}_{layout_type}_batch{batch_size}.png')
+        save_path = os.path.join(save_dir, f'PEFinal_Results_{model_name}_{layout_type}_batch{batch_size}.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()
 
@@ -282,11 +282,11 @@ def main():
                         help='Layout type to train for')
     parser.add_argument('--batch-size', type=int,
                         help='Batch size for training')
-    parser.add_argument('--epochs', type=int, default=3000,
+    parser.add_argument('--epochs', type=int, default=2000,
                         help='Maximum number of epochs')
     parser.add_argument('--lr', type=float, default=0.0001,
                         help='Initial learning rate')
-    parser.add_argument('--hidden-channels', type=int, default=64,
+    parser.add_argument('--hidden-channels', type=int, default=32,
                         help='Number of hidden channels in the model')
     parser.add_argument('--num-layers', type=int, default=4,
                         help='Number of GNN layers')
@@ -327,7 +327,7 @@ def main():
         # Save final model
         output_dir = os.path.join("results", "metrics", args.model)
         os.makedirs(output_dir, exist_ok=True)
-        save_path = os.path.join(output_dir, f"Weights_{args.model}_{args.layout}_batch{args.batch_size}.pt")
+        save_path = os.path.join(output_dir, f"OneHotCustomWeights_{args.model}_{args.layout}_batch{args.batch_size}.pt")
         torch.save(trained_model.state_dict(), save_path)
         print(f"Final model saved to {save_path}")
 

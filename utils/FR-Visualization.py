@@ -48,7 +48,8 @@ def visualize_all(
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # ─── Instantiate & load models ──────────────────────────────────────────
-    feature_dim = graphs[0].x.shape[1]
+    feature_dim = graphs[0].x.shape[1] + graphs[0].init_coords.shape[1]
+
     print(feature_dim)
     # IGNN
     ignn = IGNN(
@@ -79,8 +80,8 @@ def visualize_all(
     print("Loaded ForceGNN from", forcegnn_weights)
 
 
-    models      = [ forcegnn]
-    model_names = [ "ForceGNN"]
+    models      = [ignn, forcegnn]
+    model_names = ["IGNN", "ForceGNN"]
 
     # ─── Sample graphs ──────────────────────────────────────────────────────
     num_samples = min(num_samples, len(graphs))
@@ -212,7 +213,7 @@ def visualize_all(
                 axp.axis('off')
 
     fig.tight_layout()
-    fig.savefig(os.path.join(output_dir, "HC64comparison_gridBatchWithInitialCoordinatesOnlyNode40.png"),
+    fig.savefig(os.path.join(output_dir, "PEComparisonReadoutsNode40.png"),
                 dpi=300, bbox_inches='tight')
     plt.close(fig)
     print("Saved comparison_grid.png in", output_dir)
@@ -222,11 +223,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Compare GT vs IGNN vs FORCEGNN"
     )
-    parser.add_argument('--ignn',   type=str, default='IGNN_checkpoints/IGNN_bs16_ep1000HC64.pt',
+    parser.add_argument('--ignn',   type=str, default='IGNN_checkpoints/PEIGNN_bs16_ep1000_HC64WithoutInputOneHot.pt',
                         help="Path to IGNN weights")
-    parser.add_argument('--forcegnn', type=str, default='results/metrics/ForceGNN/Weights_ForceGNN_FR_batch16InitialCoordinatesFeaturesOnly40Nodes.pt',
+    parser.add_argument('--forcegnn', type=str, default='results/metrics/ForceGNN/PEWeights_ForceGNN_FR_batch16.pt',
                         help="Path to ForceGNN weights")
-    parser.add_argument('--data',   type=str, default='data/processed/modelInput_FRInitialCoordinatesFeaturesOnly40Nodes.pt',
+    parser.add_argument('--data',   type=str, default='data/processed/modelInput_FRgraphs1024_40Nodes_withPE.pt',
                         help="Processed .pt dataset")
     parser.add_argument('--samples',type=int, default=5,
                         help="Number of graphs to visualize")

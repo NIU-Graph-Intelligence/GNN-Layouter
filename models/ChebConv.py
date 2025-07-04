@@ -1,61 +1,61 @@
 import torch.nn as nn
 from torch_geometric.nn import ChebConv
 import torch.nn.functional as F
+from models.mlp_layers import MLPFactory, WeightInitializer
+from models.coordinate_layers import CoordinateNormalizer
 
 
 class GNN_ChebConv(nn.Module):
-    def __init__(self, max_nodes, hidden_channels=64):
+    def __init__(self, input_dim, hidden_channels=64, num_layers=3, K=2, dropout=0.4, use_residual=True):
+
         super().__init__()
-        # input_dim = max_nodes + 1
-        input_dim = max_nodes # Without Positional Index
 
-        self.conv1 = ChebConv(input_dim, hidden_channels, K=2)
-        self.bn1 = nn.BatchNorm1d(hidden_channels)
+        self.dropout = dropout
+        self.use_residual = use_residual
 
-        self.conv2 = ChebConv(hidden_channels, hidden_channels, K=2)
-        self.bn2 = nn.BatchNorm1d(hidden_channels)
+        self.convs = nn.ModuleList()
+        self.bns = nn.ModuleList()
 
-        self.conv3 = ChebConv(hidden_channels, hidden_channels, K=2)
-        self.bn3 = nn.BatchNorm1d(hidden_channels)
+        self.convs.append(ChebConv(input_dim, hidden_channels, K=K))
+        self.bns.append(nn.BatchNorm1d(hidden_channels))
 
-        self.pos_mlp = nn.Sequential(
-            nn.Linear(hidden_channels, hidden_channels),
-            nn.LayerNorm(hidden_channels),
-            nn.ReLU(),
-            nn.Dropout(0.6),
-            nn.Linear(hidden_channels, 2)
+        for _ in range(num_layers - 1):
+            self.convs.append(ChebConv(hidden_channels, hidden_channels, K=K))
+            self.bns.append(nn.BatchNorm1d(hidden_channels))
+
+        self.pos_mlp = MLPFactory.create('position',
+            in_channels=hidden_channels,
+            hidden_channels=[hidden_channels],
+            dropout_rate=0.6,
+            use_layer_norm=True,
+            output_dim = 2
         )
 
-        self.radius_mlp = nn.Sequential(
-            nn.Linear(hidden_channels, hidden_channels // 2),
-            nn.LayerNorm(hidden_channels // 2),
-            nn.ReLU(),
-            nn.Dropout(0.6),
-            nn.Linear(hidden_channels // 2, 1),
-            nn.Softplus()
+        self.radius_mlp = MLPFactory.create('radius',
+            in_channels=hidden_channels,
+            hidden_channels=[hidden_channels // 2],
+            dropout_rate=0.6,
+            use_layer_norm=True,
+            constrained_output = True
         )
 
-        self.apply(self._init_weights)
-
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            nn.init.xavier_uniform_(module.weight)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
+        WeightInitializer.xavier_uniform(self)
 
     def forward(self, x, edge_index):
-        h1 = self.bn1(F.relu(self.conv1(x, edge_index)))
-        h1 = F.dropout(h1, p=0.4, training=self.training)
+        h = x
 
-        h2 = self.bn2(F.relu(self.conv2(h1, edge_index)))
-        h2 = F.dropout(h2, p=0.4, training=self.training)
-        h2 = h2 + h1
+        h = self.convs[0](h, edge_index)
+        h = F.relu(self.bns[0](h))
+        h = F.dropout(h, p=self.dropout, training=self.training)
 
-        h3 = self.bn3(F.relu(self.conv3(h2, edge_index)))
-        h3 = F.dropout(h3, p=0.4, training=self.training)
-        h3 = h3 + h2
+        for i in range(1, len(self.convs)):
+            h_new = self.convs[i](h, edge_index)
+            h_new = F.relu(self.bns[i](h_new))
+            h_new = F.dropout(h_new, p=self.dropout, training=self.training)
+            if self.use_residual:
+                h_new = h_new + h
+            h = h_new
 
-        radius = self.radius_mlp(h3)
-        coords = F.normalize(self.pos_mlp(h3), p=2, dim=1) * radius
+
+        coords = CoordinateNormalizer.normalize_with_radius(self.pos_mlp(h), self.radius_mlp(h))
         return coords
-

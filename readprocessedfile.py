@@ -5,7 +5,7 @@ import torch
 # print(data)
 
 # ─── CONFIGURE THIS ────────────────────────────────────────────────────────────
-processed_path = "data/processed/modelInput_FRWithoutInputOneHot1024.pt"
+processed_path = "data/processed/modelInput_FRgraphs1024_40Nodes_deg_pe_onehot.pt"
 # ────────────────────────────────────────────────────────────────────────────────
 
 # Load the processed dataset

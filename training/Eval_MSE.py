@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from models_PPI import IGNN
 from models.GCNFR import ForceGNN
 from utils import get_spectral_rad
-from data.dataset import data_loader
+from data.dataset import force_directed_data_loader
 
 
 def orthogonal_procrustes_torch(A, B):
@@ -120,8 +120,9 @@ def fr_net_force_metric(positions, edge_index, area=None):
 MODEL_REGISTRY = {
     "IGNN": {
         "class": IGNN,
-        "checkpoint": "IGNN_checkpoints/IGNN_bs16_ep1000HC64.pt",
-        "data_path": "data/processed/modelInput_FR1024.pt",
+        "checkpoint": "IGNN_checkpoints/CustomOneHotOnlyIGNN_bs128_ep1000_HC64.pt",
+        "data_path": "data/processed/processed_forcedirected_onehot.pt",
+
         "feature_func": lambda data: torch.cat([data.x, data.init_coords], dim=1).T,
         "model_args":{
             "nfeat": 42,  # Example values
@@ -135,14 +136,14 @@ MODEL_REGISTRY = {
     },
     "ForceGNN": {
         "class": ForceGNN,
-        # "checkpoint": "results/metrics/ForceGNN/Weights_ForceGNN_FR_batch16InitialCoordinatesFeaturesOnly40Nodes.pt",
-        "checkpoint": "results/metrics/ForceGNN/Weights_ForceGNN_FR_batch16WithoutOneHotX.pt",
-        "data_path": "data/processed/modelInput_FRWithoutInputOneHot50Nodes.pt",
-        # "data_path": "data/processed/modelInput_FRInitialCoordinatesFeaturesOnly40Nodes.pt",
+        "checkpoint": "results/force_directed/ForceGNN/ForceDirected_ForceGNN_bs32_best.pt",
+        # "checkpoint": "results/metrics/ForceGNN/RandomdataWeights_ForceGNN_FR_batch16.pt",
+        "data_path": "data/processed/processed_forcedirected_onehot.pt",
+
         "feature_func": lambda data: torch.cat([data.x, data.init_coords], dim=1),
         "model_args": {
-            "in_feat": 3,  # 40 (one-hot) + 2 (coords)
-            "hidden_dim": 64,
+            "in_feat": 42,  # 40 (one-hot) + 2 (coords)
+            "hidden_dim": 32,
             "out_feat": 2,
             "num_layers": 4,
         },
@@ -155,13 +156,13 @@ MODEL_REGISTRY = {
     },
 }
 
-def evaluate_model(model_class, checkpoint_path, dataset_path, feature_func, device, model_args, forward_func, batch_size=128):
+def evaluate_model(model_class, checkpoint_path, dataset_path, feature_func, device, model_args, forward_func, batch_size=16):
     
     data_dict = torch.load(dataset_path)
     full_dataset = data_dict['dataset']
     
     # Get data loaders
-    train_loader, val_loader, test_loader = data_loader(
+    train_loader, val_loader, test_loader = force_directed_data_loader(
         dataset=full_dataset,
         batch_size=batch_size,
         splits=(0.8, 0.10, 0.10),
@@ -171,9 +172,14 @@ def evaluate_model(model_class, checkpoint_path, dataset_path, feature_func, dev
     # Instantiate model
     model = model_class(**model_args).to(device)
 
-    # Load weights
+    # Load weights - Modified this part
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint)
+    if 'model_state_dict' in checkpoint:
+        # If checkpoint contains full training state
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        # If checkpoint contains only model state
+        model.load_state_dict(checkpoint)
     model.eval()
 
     total_procrustes = 0.0

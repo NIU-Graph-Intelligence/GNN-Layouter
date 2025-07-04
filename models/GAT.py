@@ -2,98 +2,87 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
+from models.mlp_layers import MLPFactory, ConvolutionalBlock, WeightInitializer
+from models.coordinate_layers import PolarCoordinates, CartesianCoordinates
 
 
 class GAT(nn.Module):
-    def __init__(self, max_nodes, hidden_channels=64, heads=8):  # Reduced hidden_channels, increased heads
-        """
-        Args:
-            max_nodes (int): Maximum number of nodes. Used to define input feature dimension.
-            hidden_channels (int): Dimensionality for hidden representations.
-            heads (int): Number of attention heads.
-        """
+    def __init__(self, input_dim, hidden_channels=64, heads=8, num_layers=3, dropout=0.2):
+        
         super().__init__()
 
-        # Original input feature dimension.
-        # Optionally, if you have additional features (e.g., degree or Laplacian eigenvectors),
-        # you can increase this dimension accordingly.
-        input_dim = max_nodes + 1
-        # input_dim = max_nodes
+        # Input dimension setup
+        self.dropout = dropout
+        self.heads = heads
+        self.num_layers = num_layers
 
         head_dim = hidden_channels // heads
+        self.convs = nn.ModuleList()
+        self.norms = nn.ModuleList()
 
-        # Simplified architecture with fewer layers but more heads
-        self.conv1 = GATConv(input_dim, head_dim, heads=heads, dropout=0.2)
-        self.conv2 = GATConv(hidden_channels, head_dim, heads=heads, dropout=0.2)
-        self.conv3 = GATConv(hidden_channels, head_dim, heads=heads, dropout=0.2)
+        conv, norm = ConvolutionalBlock.create_attention_block(
+            input_dim,head_dim, heads, dropout
+        )
+        self.convs.append(conv)
+        self.norms.append(norm)
 
-        # Layer norms after each convolution
-        self.norm1 = nn.LayerNorm(hidden_channels)
-        self.norm2 = nn.LayerNorm(hidden_channels)
-        self.norm3 = nn.LayerNorm(hidden_channels)
+        # Hidden GAT layers (hidden_channels to hidden_channels)
+        for _ in range(num_layers - 1):
+            conv, norm = ConvolutionalBlock.create_attention_block(
+                hidden_channels,head_dim, heads, dropout
+            )
+            self.convs.append(conv)
+            self.norms.append(norm)
 
-        # Angle prediction branch (new)
-        self.angle_mlp = nn.Sequential(
-            nn.Linear(hidden_channels, hidden_channels),
-            nn.LayerNorm(hidden_channels),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_channels, 1),
-            nn.Tanh()  # Output in [-1, 1] range
+        # Angle prediction using modular MLP
+        self.angle_mlp = MLPFactory.create(
+            'angle',
+            in_channels=hidden_channels,
+            hidden_channels=[hidden_channels],
+            dropout_rate=0.2,
+            use_layer_norm=True
         )
 
-        # Radius prediction branch
-        self.radius_mlp = nn.Sequential(
-            nn.Linear(hidden_channels, hidden_channels // 2),
-            nn.LayerNorm(hidden_channels // 2),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_channels // 2, 1),
-            nn.Softplus()
+        # Radius prediction using modular MLP
+        self.radius_mlp = MLPFactory.create(
+            'radius',
+            in_channels=hidden_channels,
+            hidden_channels=[hidden_channels // 2],
+            dropout_rate=0.2,
+            use_layer_norm=True,
+            constrained_output=True  # Uses Sigmoid for constrained output
         )
 
-        # Initialize weights
-        self.apply(self._init_weights)
-
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            nn.init.xavier_uniform_(module.weight, gain=0.02)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
+        WeightInitializer.xavier_uniform(self)
 
     def forward(self, x, edge_index):
-        # Initial node features
-        h1 = self.norm1(self.conv1(x, edge_index))
-        h1 = F.relu(h1)
+       
+        h = x
+        for i in range(self.num_layers):
+            h_new = self.convs[i](h, edge_index)
+            h_new = self.norms[i](h_new)
+            h_new = F.relu(h_new)
+            if i > 0:
+                h_new = h_new + h
+            else:
+                h = h_new
 
-        # Second layer with residual
-        h2 = self.norm2(self.conv2(h1, edge_index))
-        h2 = F.relu(h2) + h1
+        h = F.normalize(h, p=2, dim=1)
 
-        # Third layer with residual
-        h3 = self.norm3(self.conv3(h2, edge_index))
-        h3 = F.relu(h3) + h2
+        # Predict angles and radius
+        angles = self.angle_mlp(h)
+        radius = self.radius_mlp(h)
 
-        # Modified coordinate prediction
-        h3 = F.normalize(h3, p=2, dim=1)  # Normalize features
+        # Convert to Cartesian coordinates using modular components
+        coords = PolarCoordinates.to_cartesian(
+            angles=angles,
+            radius=radius,
+            constrain_radius=True,
+            radius_range=(0.9, 1.1)  # GAT's specific radius constraints
+        )
 
-        # Predict angles (ensure full range coverage)
-        angles = self.angle_mlp(h3) * torch.pi  # Scale to [-π, π]
-        
-        # Predict radius deviation from unit circle
-        radius_dev = self.radius_mlp(h3)
-        radius = 1.0 + 0.1 * torch.tanh(radius_dev)  # Constrain radius near 1
-        
-        # Convert to coordinates
-        coords = torch.zeros(x.size(0), 2, device=x.device)
-        coords[:, 0] = radius.squeeze() * torch.cos(angles.squeeze())
-        coords[:, 1] = radius.squeeze() * torch.sin(angles.squeeze())
-        
-        # Ensure the layout is centered
-        coords = coords - coords.mean(dim=0, keepdim=True)
-        
-        # Scale to maintain unit circle
-        coords = F.normalize(coords, p=2, dim=1)
+        # Final normalization
+        coords = CartesianCoordinates.normalize_coordinates(coords, center=True)
         
         return coords
 

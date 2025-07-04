@@ -5,119 +5,18 @@ from torch.nn import MSELoss
 
 
 def evaluate(model, loader, device, loss_type='circular'):
-    """
-    Router function that calls the appropriate evaluation function based on loss_type
-    """
+
     if loss_type == 'circular':
         return evaluate_circular(model, loader, device)
-    elif loss_type == 'fr':
-        return evaluate_fr(model, loader, device)
-    elif loss_type == 'fa2':
-        return evaluate_fa2(model, loader, device)
     elif loss_type == 'forceGNN':
         return evaluate_forcegnn(model, loader, device)
     else:
         raise ValueError(f"Unknown loss type: {loss_type}")
 
 
-# def normalize(z, eps=1e-6):
-#     """
-#     Center at zero mean and scale to unit std along each axis.
-#     """
-#     z = z - z.mean(dim=0, keepdim=True)
-#     z = z / (z.std(dim=0, keepdim=True) + eps)
-#     return z
-#
-# def procrustes_loss(pred, true, eps=1e-6):
-#     """
-#     1 - (trace(pred^T true)^2) / (trace(pred^T pred) * trace(true^T true))
-#     Both pred & true should be zero-mean and unit-variance.
-#     """
-#     # [B is 2 dims here]
-#     num = torch.trace(pred.T @ true).pow(2)
-#     den = (torch.trace(pred.T @ pred) * torch.trace(true.T @ true)).clamp(min=eps)
-#     return 1 - num / den
-#
-# def structure_loss(pred, true, α=1.0, β=10.0, γ=0, δ=1.0):
-#     """
-#     pred, true:  [N,2] raw coords output / ground-truth original_y
-#     α: coord MSE weight
-#     β: stress / pairwise MSE weight
-#     γ: tiny repulsion weight
-#     δ: Procrustes alignment weight
-#     """
-#     # 1) normalize both to focus only on shape of the embedding
-#     p = normalize(pred)
-#     t = normalize(true)
-#
-#     # 2) coordinate MSE
-#     l_coord  = F.mse_loss(p, t)
-#
-#     # 3) stress = pairwise distance MSE
-#     dp = torch.cdist(p, p)  # [N,N]
-#     dt = torch.cdist(t, t)
-#     l_stress = F.mse_loss(dp, dt)
-#
-#     # 4) tiny repulsion to avoid collapse
-#     #    encourage distances > 0
-#     # d = dp + 1e-6
-#     # l_repel = - (torch.log(d).mean())
-#     l_repel = 0
-#
-#     # 5) Procrustes alignment (rotation/reflection)
-#     l_proc   = procrustes_loss(p, t)
-#
-#     return (
-#         α * l_coord
-#       + β * l_stress
-#       + γ * l_repel
-#       + δ * l_proc,
-#       l_coord, l_stress, l_repel, l_proc
-#     )
-
-
-def fr_force_residual_loss(pred_pos, true_pos, lambda_coord = 1.0, lambda_pairwise=0.5):
-
-    coord_loss = F.mse_loss(pred_pos, true_pos)
-
-    # init_loss = 0.0
-    # if init_coords is not None:
-    #     init_loss = F.mse_loss(pred_pos, init_coords)
-    #
-    pairwise_loss = 0
-    if true_pos is not None:
-        pred_dist = torch.cdist(pred_pos, pred_pos)
-        true_dist = torch.cdist(true_pos, true_pos)
-        pairwise_loss = F.mse_loss(pred_dist, true_dist)
-
-    total_loss = lambda_coord * coord_loss  + lambda_pairwise * pairwise_loss
-#
-    # return coord_loss
-    return total_loss
-
-
-#     # 1) coordinate MSE
-#     l_coord = F.mse_loss(pred, true)
-#
-#     # 2) stress
-#     pdist_pred = torch.cdist(pred, pred)
-#     pdist_true = torch.cdist(true, true)
-#     l_stress = F.mse_loss(pdist_pred, pdist_true)
-#
-#     # 3) tiny repulsion to keep things apart
-#     d = pdist_pred + 1e-6
-#     l_repel = -(torch.log(d).mean())
-#
-#     return α * l_coord + β * l_stress + γ * l_repel
 
 def forceGNN_loss(pred_coords, true):
-    """
-    Compute MSE loss between predicted and true coordinates.
-    
-    Args:
-        pred_coords: Tensor of shape [batch_size, nodes_per_graph, 2]
-        true: Tensor of shape [batch_size * nodes_per_graph, 2]
-    """
+
     batch_size = pred_coords.shape[0]
     nodes_per_graph = pred_coords.shape[1]
     
@@ -154,74 +53,9 @@ def evaluate_forcegnn(model, loader, device):
     return total_loss / count if count > 0 else float('inf')
 
 
-def fa2_force_residual_loss(pred_pos, true_pos, lambda_coord = 1.0, lambda_pairwise=0.5):
-    coord_loss = F.mse_loss(pred_pos, true_pos)
-    pairwise_loss = 0
-    if true_pos is not None:
-        pred_dist = torch.cdist(pred_pos, pred_pos)
-        true_dist = torch.cdist(true_pos, true_pos)
-        pairwise_loss = F.mse_loss(pred_dist, true_dist)
-
-    total_loss = lambda_coord * coord_loss + lambda_pairwise * pairwise_loss
-
-    return total_loss
-
-
-def evaluate_fa2(model, loader, device):
-    """
-    Evaluate average FA2‐force‐residual loss over dataset.
-    """
-    model.eval()
-    total, count = 0.0, 0
-
-    with torch.no_grad():
-        for batch in loader:
-            batch = batch.to(device)
-            pred = model(batch)
-            # remove any global drift
-            pred_centered = pred - pred.mean(dim=0, keepdim=True)
-
-            loss = fa2_force_residual_loss(pred_centered, batch.original_y,)
-            total += loss.item()
-            count += 1
-
-    return total / count if count else float('inf')
-
-
-def evaluate_fr(model, loader, device):
-    
-    model.eval()
-    total_loss = 0
-    count = 0
-
-    with torch.no_grad():
-        for batch in loader:
-            try:
-                batch = batch.to(device)
-                pred_coords = model(batch)  # Model takes the entire batch
-                
-                # Center the predicted coordinates
-                pred_centered = pred_coords - pred_coords.mean(dim=0, keepdim=True)
-
-                # Calculate force residual loss
-                loss = fr_force_residual_loss(pred_centered, batch.original_y)
-
-                total_loss += loss.item()
-                count += 1
-            except Exception as e:
-                print(f"Error evaluating batch: {str(e)}")
-                traceback.print_exc()  # Print full traceback for debugging
-                continue
-
-    return total_loss / count if count > 0 else float('inf')
-
-
-
 
 def evaluate_circular(model, loader, device):
-    """
-    Evaluation function specifically for circular layout
-    """
+
     model.eval()
     total_loss = 0
     count = 0
@@ -242,9 +76,7 @@ def evaluate_circular(model, loader, device):
 
 
 def circular_layout_loss(pred_coords, true_coords, x):
-    """
-    Enhanced loss function with stronger geometric constraints for circular layout
-    """
+
     # Check for shape mismatch and fix if needed
     if pred_coords.shape[0] != true_coords.shape[0]:
         print(f"Warning: Shape mismatch in circular_layout_loss. Pred: {pred_coords.shape}, True: {true_coords.shape}")
