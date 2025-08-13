@@ -72,6 +72,25 @@
   "data": {
     "splits": [0.8, 0.1, 0.1],
     "random_state": 42,
+    "generation": {
+      "num_samples": 3,
+      "num_nodes": 40,
+      "graph_types": ["ER", "WS", "BA"]
+    },
+    "batch_sizes": {
+      "training": 256,
+      "evaluation": 1,
+      "visualization": 1
+    },
+    "loaders": {
+      "num_workers": 4,
+      "pin_memory": true,
+      "drop_last": false
+    },
+    "preprocessing": {
+      "normalize": true,
+      "feature_scaling": "standard"
+    },
     "paths": {
       "circular": "data/processed/normalized_modelInput_circular_layout.pt",
       "force_directed": "data/processed/processed5000_forcedirected_degree.pt"
@@ -109,16 +128,39 @@
     }
   },
   "paths": {
+    "project_root": ".",
+    "data": {
+      "base": "data",
+      "raw": "data/raw", 
+      "processed": "data/processed",
+      "circular": "data/processed/normalized_modelInput_circular_layout.pt",
+      "force_directed": "data/processed/processed5000_forcedirected_degree.pt",
+      "graphs": "data/raw/graph_dataset",
+      "layouts": "data/raw/layouts", 
+      "adjacency_matrices": "data/raw/adjacency_matrices"
+    },
     "results": {
       "base": "results",
       "force_directed": "results/force_directed",
       "circular": "results/circular",
-      "figures": "results/figures"
+      "figures": "results/figures",
+      "training": "results/training",
+      "evaluation": "results/evaluation"
     },
     "models": {
-      "circular_chebconv": "results/GNN_Model_ChebConv_normalized_41nodes_batchbest.pt",
-      "force_forcegnn_256": "results/force_directed/ForceGNN/ForceDirected_ForceGNN_bs256_best.pt",
-      "force_forcegnn_32": "results/force_directed/ForceGNN/ForceDirected_ForceGNN_bs32_best.pt"
+      "base": "models",
+      "checkpoints": "results/checkpoints",
+      "circular": "results/GNN_Model_ChebConv_normalized_41nodes_batchbest.pt",
+      "force_forcegnn": "results/force_directed/ForceGNN/ForceDirected_ForceGNN_bs256_best.pt"
+    },
+    "scripts": {
+      "base": ".",
+      "shell_scripts": "."
+    },
+    "logs": {
+      "base": "logs",
+      "training": "logs/training",
+      "evaluation": "logs/evaluation"
     }
   }
 }

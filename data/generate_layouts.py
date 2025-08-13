@@ -5,6 +5,9 @@ import networkx as nx
 import numpy as np
 import torch
 from torch_geometric.utils import from_networkx, to_networkx
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config_utils.config_manager import ConfigManager
 
 def assign_initial_positions(G, dim=2):
     """Grid-based initial positioning"""
@@ -279,6 +282,8 @@ def save_results(layouts, adjacency_matrices, output_dir, layout_type, initial_p
             print(f"Saved initial positions to {init_path}")
 
 def main():
+    config = ConfigManager()
+    
     parser = argparse.ArgumentParser(description='Generate layouts for graphs')
     parser.add_argument('--input', type=str, required=True,
                         help='Input pickle file containing PyG graphs')
@@ -286,7 +291,7 @@ def main():
                         help='Type of layout to generate')
     parser.add_argument('--algorithms', type=str, default='FR',
                         help='Comma-separated list of force-directed algorithms (FR,FA2)')
-    parser.add_argument('--output-dir', type=str, default='data/raw/layouts',
+    parser.add_argument('--output-dir', type=str, default=config.get_data_path('layouts'),
                         help='Directory to save the layouts')
     
     args = parser.parse_args()

@@ -5,6 +5,9 @@ import os
 import numpy as np
 from torch_geometric.data import Data
 from torch_geometric.utils import degree
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config_utils.config_manager import ConfigManager
 
 def load_data(args):
     """Load layout data and adjacency matrices"""
@@ -261,6 +264,8 @@ def prepare_dataset(layouts, adjacency_matrices, layout_type, feature_types, ini
     return dataset
 
 def main():
+    config = ConfigManager()
+    
     parser = argparse.ArgumentParser(description='Preprocess graph layouts for GNN training')
     
     # Required arguments
@@ -277,7 +282,7 @@ def main():
     # Optional arguments
     parser.add_argument('--init-positions', type=str,
                       help='Path to initial positions file (required for force-directed)')
-    parser.add_argument('--output-dir', type=str, default='data/processed',
+    parser.add_argument('--output-dir', type=str, default=config.get_data_path('processed'),
                       help='Output directory for processed data')
     parser.add_argument('--output-name', type=str, 
                       help='Custom name for output file (default: processed_[layout-type]_[features].pt)')

@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 
 
-class Config:
+class ConfigManager:
     """Centralized configuration manager"""
     
     def __init__(self, config_path: Optional[str] = None):
@@ -75,6 +75,49 @@ class Config:
         """Get visualization configuration"""
         return self.get('visualization', {})
     
+    def get_path(self, path_key: str, default: str = None) -> str:
+        """
+        Get a path from configuration
+        
+        Args:
+            path_key: Dot-separated path key (e.g., 'data.processed', 'results.figures')
+            default: Default path if not found
+            
+        Returns:
+            Absolute path as string
+        """
+        relative_path = self.get(f'paths.{path_key}', default)
+        if relative_path is None:
+            raise ValueError(f"Path not found in config: paths.{path_key}")
+        
+        # Convert to absolute path
+        if not os.path.isabs(relative_path):
+            project_root = self.config_path.parent
+            return str(project_root / relative_path)
+        return relative_path
+    
+    def get_data_path(self, data_type: str = None) -> str:
+        """Get data path, optionally for specific data type"""
+        if data_type:
+            return self.get_path(f'data.{data_type}')
+        return self.get_path('data.base')
+    
+    def get_model_path(self, model_key: str) -> str:
+        """Get path to model checkpoint"""
+        return self.get_path(f'models.{model_key}')
+    
+    def get_results_path(self, result_type: str = 'base') -> str:
+        """Get results path"""
+        return self.get_path(f'results.{result_type}')
+    
+    def get_figures_path(self) -> str:
+        """Get figures output path"""
+        return self.get_path('results.figures')
+        
+    def get_logs_path(self, log_type: str = 'base') -> str:
+        """Get logs path"""
+        return self.get_path(f'logs.{log_type}')
+    
     def get_evaluation_config(self) -> Dict[str, Any]:
         """Get evaluation configuration"""
         return self.get('evaluation', {})
@@ -82,18 +125,6 @@ class Config:
     def get_mlp_config(self, mlp_type: str) -> Dict[str, Any]:
         """Get MLP layer configuration"""
         return self.get(f'mlp_layers.{mlp_type}', {})
-    
-    def get_path(self, path_type: str) -> str:
-        """Get configured path"""
-        return self.get(f'paths.{path_type}', '')
-    
-    def get_data_path(self, layout_type: str) -> str:
-        """Get data path for layout type"""
-        return self.get(f'data.paths.{layout_type}', '')
-    
-    def get_model_path(self, model_key: str) -> str:
-        """Get model checkpoint path"""
-        return self.get(f'paths.models.{model_key}', '')
     
     def update(self, key_path: str, value: Any) -> None:
         """
@@ -129,17 +160,17 @@ class Config:
 # Global configuration instance
 _config_instance = None
 
-def get_config(config_path: Optional[str] = None) -> Config:
+def get_config(config_path: Optional[str] = None) -> ConfigManager:
     """Get global configuration instance"""
     global _config_instance
     if _config_instance is None or config_path is not None:
-        _config_instance = Config(config_path)
+        _config_instance = ConfigManager(config_path)
     return _config_instance
 
-def reload_config(config_path: Optional[str] = None) -> Config:
+def reload_config(config_path: Optional[str] = None) -> ConfigManager:
     """Reload configuration from file"""
     global _config_instance
-    _config_instance = Config(config_path)
+    _config_instance = ConfigManager(config_path)
     return _config_instance
 
 
@@ -163,6 +194,30 @@ def get_data_config() -> Dict[str, Any]:
 def get_visualization_config() -> Dict[str, Any]:
     """Get visualization configuration"""
     return get_config().get_visualization_config()
+
+def get_path(path_key: str, default: str = None) -> str:
+    """Get a path from configuration"""
+    return get_config().get_path(path_key, default)
+
+def get_data_path(data_type: str = None) -> str:
+    """Get data path, optionally for specific data type"""
+    return get_config().get_data_path(data_type)
+
+def get_model_path(model_key: str) -> str:
+    """Get path to model checkpoint"""
+    return get_config().get_model_path(model_key)
+
+def get_results_path(result_type: str = 'base') -> str:
+    """Get results path"""
+    return get_config().get_results_path(result_type)
+
+def get_figures_path() -> str:
+    """Get figures output path"""
+    return get_config().get_figures_path()
+
+def get_logs_path(log_type: str = 'base') -> str:
+    """Get logs path"""
+    return get_config().get_logs_path(log_type)
 
 
 if __name__ == "__main__":

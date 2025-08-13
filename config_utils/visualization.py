@@ -120,8 +120,22 @@ class UnifiedVisualizer:
         ax.set_aspect('equal')
         ax.axis('off')
     
-    def visualize_circular_layout(self, model_path, data_path, num_samples=5, output_dir='results/figures', seed=42, split='test'):
+    def visualize_circular_layout(self, model_path=None, data_path=None, num_samples=None, 
+                                output_dir=None, seed=None, split='test'):
         """Visualize circular layout model predictions using actual test dataset"""
+        
+        # Get defaults from config if not provided
+        if num_samples is None:
+            num_samples = self.config.get('visualization.num_samples', 5)
+        if output_dir is None:
+            output_dir = self.config.get_figures_path()
+        if seed is None:
+            seed = self.config.get('data.random_state', 42)
+        if model_path is None:
+            model_path = self.config.get_model_path('circular')
+        if data_path is None:
+            data_path = self.config.get_data_path('circular')
+            
         print(f"Visualizing circular layout with {num_samples} samples from {split} set")
         
         # Setup
@@ -220,15 +234,28 @@ class UnifiedVisualizer:
         os.makedirs(output_dir, exist_ok=True)
         save_path = os.path.join(output_dir, f'Circular_layout_{split}_{num_samples}samples.png')
         plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.savefig(save_path, dpi=self.default_dpi, bbox_inches='tight')
         plt.close()
         
         print(f"Saved circular layout visualization to {save_path}")
         return save_path
     
-    def visualize_force_directed_layout(self, model_path, data_path, num_samples=5, 
-                                      output_dir='results/figures', seed=42, split='test'):
+    def visualize_force_directed_layout(self, model_path=None, data_path=None, num_samples=None, 
+                                      output_dir=None, seed=None, split='test'):
         """Visualize force-directed layout model predictions using actual dataset split"""
+        
+        # Get defaults from config if not provided
+        if num_samples is None:
+            num_samples = self.config.get('visualization.num_samples', 5)
+        if output_dir is None:
+            output_dir = self.config.get_figures_path()
+        if seed is None:
+            seed = self.config.get('data.random_state', 42)
+        if model_path is None:
+            model_path = self.config.get_model_path('force_forcegnn')
+        if data_path is None:
+            data_path = self.config.get_data_path('force_directed')
+            
         print(f"Visualizing force-directed layout with {num_samples} samples from {split} set")
         
         # Setup
@@ -348,7 +375,7 @@ class UnifiedVisualizer:
         os.makedirs(output_dir, exist_ok=True)
         save_path = os.path.join(output_dir, f"ForceDirected_{split}_{num_samples}samples.png")
         plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.savefig(save_path, dpi=self.default_dpi, bbox_inches='tight')
         plt.close()
         
         print(f"Saved force-directed visualization to {save_path}")
@@ -366,7 +393,7 @@ def main():
     
     # Circular layout arguments with config defaults
     parser.add_argument('--circular-model', type=str, 
-                       default=config.get_model_path('circular_chebconv'),
+                       default=config.get_model_path('circular'),
                        help="Path to circular layout model weights")
     parser.add_argument('--circular-data', type=str, 
                        default=config.get_data_path('circular'),
@@ -374,7 +401,7 @@ def main():
     
     # Force-directed layout arguments with config defaults
     parser.add_argument('--force-model', type=str, 
-                       default=config.get_model_path('force_forcegnn_256'),
+                       default=config.get_model_path('force_forcegnn'),
                        help="Path to ForceGNN model weights")
     parser.add_argument('--force-data', type=str, 
                        default=config.get_data_path('force_directed'),
@@ -387,7 +414,7 @@ def main():
     parser.add_argument('--split', type=str, choices=['train', 'val', 'test'], 
                        default='test', help="Dataset split to use for visualization")
     parser.add_argument('--output-dir', type=str, 
-                       default=viz_config.get('output_dir', 'results/figures'),
+                       default=viz_config.get('output_dir', config.get_figures_path()),
                        help="Output directory for visualizations")
     parser.add_argument('--seed', type=int, 
                        default=config.get('data.random_state', 42),

@@ -143,7 +143,7 @@ def get_model_registry():
         },
         "ForceGNN": {
             "class": ForceGNN,
-            "checkpoint": config.get_model_path('force_forcegnn_32'),
+            "checkpoint": config.get_model_path('force_forcegnn'),
             "data_path": config.get_data_path('force_directed'),
             "feature_func": lambda data: torch.cat([data.x, data.init_coords], dim=1),
             "model_args": {

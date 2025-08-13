@@ -7,6 +7,9 @@ import torch
 from torch_geometric.utils import from_networkx
 from torch_geometric.data import Data
 import numpy as np
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config_utils.config_manager import ConfigManager
 
 def assign_communities(G, num_communities):
     """Assign community labels to nodes using network structure"""
@@ -61,13 +64,25 @@ def convert_to_pyg_data(G, graph_id, add_communities=False):
     
     return data
 
-def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_dataset_path="data/raw/graph_dataset/deepdrawingReproducecommunity_graphs_dataset.pkl", add_communities_to_generated=False):
+def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_dataset_path=None, add_communities_to_generated=False):
     """Generate a mix of specified graph types (BA, ER, WS) and combine with community dataset
     
     Args:
         num_samples: Total number of graphs to generate
         num_nodes: Number of nodes in each graph
         graph_types: List of graph types to generate ('BA', 'ER', 'WS')
+        save_path: Path to save the generated graphs
+        community_dataset_path: Path to community dataset (if None, uses config)
+        add_communities_to_generated: Whether to add community detection to generated graphs
+    """
+    config = ConfigManager()
+    
+    # Use config path if not provided
+    if community_dataset_path is None:
+        community_dataset_path = os.path.join(
+            config.get_data_path('graphs'), 
+            'deepdrawingReproducecommunity_graphs_dataset.pkl'
+        )
         save_path: Path to save the generated graphs
         community_dataset_path: Path to the existing community dataset
     """
@@ -156,16 +171,19 @@ def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_da
     return graphs
 
 if __name__ == "__main__":
+    config = ConfigManager()
+    
     parser = argparse.ArgumentParser(description='Generate graph dataset with specified types')
     parser.add_argument('--graph-types', type=str, default='ER,WS,BA',
                         help='Comma-separated list of graph types to generate (ER,WS,BA)')
-    parser.add_argument('--num-samples', type=int, default=3,
+    parser.add_argument('--num-samples', type=int, default=config.get('data.generation.num_samples', 3),
                         help='Total number of graphs to generate')
-    parser.add_argument('--num-nodes', type=int, default=40,
+    parser.add_argument('--num-nodes', type=int, default=config.get('data.generation.num_nodes', 40),
                         help='Number of nodes in each graph')
-    parser.add_argument('--output', type=str, default='data/raw/graph_dataset/deepdrawingReproduceFinal_graphs.pkl',
+    parser.add_argument('--output', type=str, 
+                        default=os.path.join(config.get_data_path('graphs'), 'deepdrawingReproduceFinal_graphs.pkl'),
                         help='Path to save the generated graphs')
-    parser.add_argument('--seed', type=int, default=42,
+    parser.add_argument('--seed', type=int, default=config.get('training.seed', 42),
                         help='Random seed for reproducibility')
     parser.add_argument('--add-communities-to-generated', action='store_true',
                         help='Add detected communities to generated graphs (ER, WS, BA)')
