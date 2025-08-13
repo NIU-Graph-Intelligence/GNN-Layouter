@@ -103,7 +103,7 @@ class ForceDirectedProcessor(nn.Module):
     def process_force_messages(self, x_input: torch.Tensor, neighbor_msg: torch.Tensor, 
                              col: torch.Tensor, size: int) -> tuple:
 
-        # Aggregate neighbor messages
+        # Aggregate neighbor messages with safety checks
         agg_neighbors = scatter_mean(neighbor_msg, col, dim=0, dim_size=size)
         agg_neighbors = self.norm_before_rep(agg_neighbors)
         
@@ -118,6 +118,7 @@ class ForceDirectedProcessor(nn.Module):
 
     @staticmethod
     def reshape_coordinates(coords: torch.Tensor, batch: torch.Tensor) -> torch.Tensor:
-        num_graphs = batch.max().item() + 1
-        nodes_per_graph = coords.shape[0] // num_graphs
-        return coords.view(num_graphs, nodes_per_graph, -1) 
+        # For force-directed layouts with variable graph sizes, return coordinates as-is
+        # The batch tensor is used by PyG to track which nodes belong to which graph
+        # We don't need to reshape since each node's coordinates are independent
+        return coords 

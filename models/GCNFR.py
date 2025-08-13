@@ -3,6 +3,13 @@ from torch import nn
 from models.mlp_layers import MLPFactory
 from models.coordinate_layers import ForceDirectedProcessor
 
+# Import config manager
+try:
+    from config_utils.config_manager import get_config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+
 class NodeModel(nn.Module):
     def __init__(self, in_feat, out_feat):
         super().__init__()
@@ -37,8 +44,24 @@ class NodeModel(nn.Module):
         return self.output_mlp(out_final)
 
 class ForceGNN(nn.Module):
-    def __init__(self, in_feat, hidden_dim, out_feat, num_layers):
+    def __init__(self, in_feat, hidden_dim=None, out_feat=None, num_layers=None):
         super().__init__()
+        
+        # Load config defaults if available
+        if CONFIG_AVAILABLE:
+            config = get_config()
+            force_gnn_config = config.get_model_config('ForceGNN')
+            
+            # Apply config defaults with fallback to hardcoded values
+            hidden_dim = hidden_dim or force_gnn_config.get('hidden_dim', 32)
+            out_feat = out_feat or force_gnn_config.get('out_feat', 2)
+            num_layers = num_layers or force_gnn_config.get('num_layers', 4)
+        else:
+            # Fallback defaults if config not available
+            hidden_dim = hidden_dim or 32
+            out_feat = out_feat or 2
+            num_layers = num_layers or 4
+        
         self.layers = nn.ModuleList()
         self.layers.append(NodeModel(in_feat, hidden_dim))
         

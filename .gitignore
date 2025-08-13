@@ -185,13 +185,10 @@ PreviousFilesalltogether/
 utils/IGNN_visualization.py
 
 # Exclude specific files from root directory
-analyze_dataset.py
-dataset_FR.py
 functions.py
 layers.py
 models_PPI.py
 normalization.py
-readprocessedfile.py
 train_IGNN_FR.py
 train_IGNN_FT2.py
 utils.py

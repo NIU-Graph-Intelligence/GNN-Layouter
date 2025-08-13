@@ -1,4 +1,4 @@
 #!/bin/bash
 
 
-python3 data/preprocess_data.py --input data/raw/layouts/combined_fr_layouts.pkl --adj-matrices data/raw/adjacency_matrices/combined_adjacency_matrices.pkl --features onehot --init-positions data/raw/layouts/combined_initial_positions.pkl --layout-type forcedirected
+python3 data/preprocess_data.py --input data/raw/layouts/LFR_fr_layouts5000.pkl --adj-matrices data/raw/adjacency_matrices/LFR_adjacency_matrices5000.pkl --features degree --init-positions data/raw/layouts/LFR_initial_positions5000.pkl --layout-type forcedirected

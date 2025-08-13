@@ -23,7 +23,7 @@ def assign_communities(G, num_communities):
         communities = {node: random.randint(1, num_communities) for node in G.nodes()}
     return communities
 
-def convert_to_pyg_data(G, graph_id):
+def convert_to_pyg_data(G, graph_id, add_communities=False):
     """Convert NetworkX graph to PyG Data object with same attributes as community dataset"""
     # Create node features (node indices as features)
     num_nodes = G.number_of_nodes()
@@ -47,9 +47,21 @@ def convert_to_pyg_data(G, graph_id):
         graph_id=graph_id
     )
     
+    # Add community information if requested
+    if add_communities:
+        communities_dict = assign_communities(G, num_communities=3)  # Default to 3 communities
+        
+        # Convert to tensor format (node index -> community id)
+        community_tensor = torch.zeros(num_nodes, dtype=torch.long)
+        for node, comm in communities_dict.items():
+            community_tensor[node] = comm
+        
+        data.community = community_tensor
+        data.num_communities = torch.tensor(len(set(communities_dict.values())))
+    
     return data
 
-def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_dataset_path="data/raw/graph_dataset/community_graphs_dataset40Nodes.pkl"):
+def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_dataset_path="data/raw/graph_dataset/deepdrawingReproducecommunity_graphs_dataset.pkl", add_communities_to_generated=False):
     """Generate a mix of specified graph types (BA, ER, WS) and combine with community dataset
     
     Args:
@@ -90,7 +102,7 @@ def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_da
                 G = nx.watts_strogatz_graph(n=num_nodes, k=k, p=p)
             
             # Convert to PyG Data object
-            data = convert_to_pyg_data(G, graph_id)
+            data = convert_to_pyg_data(G, graph_id, add_communities=add_communities_to_generated)
             graphs.append(data)
 
     # Now load and add the community dataset graphs
@@ -100,9 +112,35 @@ def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_da
             community_graphs = pickle.load(f)
         print(f"Loaded {len(community_graphs)} community graphs")
         
-        # Add all community graphs to our collection
-        graphs.extend(community_graphs)
+        # Process community graphs to ensure they have community attributes
+        processed_community_graphs = []
+        for data in community_graphs:
+            # Check if community information already exists
+            if hasattr(data, 'community') and hasattr(data, 'num_communities'):
+                processed_community_graphs.append(data)
+            else:
+                # Extract community information if it exists in the original format
+                if hasattr(data, 'communities'):  # Old format
+                    communities_dict = data.communities
+                    community_tensor = torch.zeros(data.num_nodes, dtype=torch.long)
+                    for node, comm in communities_dict.items():
+                        community_tensor[node] = comm
+                    
+                    data.community = community_tensor
+                    data.num_communities = torch.tensor(len(set(communities_dict.values())))
+                
+                processed_community_graphs.append(data)
+        
+        # Add all processed community graphs to our collection
+        graphs.extend(processed_community_graphs)
         print(f"Combined dataset now has {len(graphs)} graphs total")
+        
+        # Print community statistics
+        community_graphs_count = sum(1 for g in graphs if hasattr(g, 'community'))
+        non_community_graphs_count = len(graphs) - community_graphs_count
+        print(f"  - Graphs with community info: {community_graphs_count}")
+        print(f"  - Graphs without community info: {non_community_graphs_count}")
+        
     except FileNotFoundError:
         print(f"Warning: Community dataset not found at {community_dataset_path}")
         print("Proceeding with only generated graphs")
@@ -121,14 +159,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate graph dataset with specified types')
     parser.add_argument('--graph-types', type=str, default='ER,WS,BA',
                         help='Comma-separated list of graph types to generate (ER,WS,BA)')
-    parser.add_argument('--num-samples', type=int, default=1000,
+    parser.add_argument('--num-samples', type=int, default=3,
                         help='Total number of graphs to generate')
     parser.add_argument('--num-nodes', type=int, default=40,
                         help='Number of nodes in each graph')
-    parser.add_argument('--output', type=str, default='data/raw/graph_dataset/CodeRefactorgenerated_graphs.pkl',
+    parser.add_argument('--output', type=str, default='data/raw/graph_dataset/deepdrawingReproduceFinal_graphs.pkl',
                         help='Path to save the generated graphs')
     parser.add_argument('--seed', type=int, default=42,
                         help='Random seed for reproducibility')
+    parser.add_argument('--add-communities-to-generated', action='store_true',
+                        help='Add detected communities to generated graphs (ER, WS, BA)')
     
     args = parser.parse_args()
     
@@ -146,4 +186,5 @@ if __name__ == "__main__":
         exit(1)
         
     # Generate graphs
-    generate_graphs(args.num_samples, args.num_nodes, graph_types, args.output) 
+    generate_graphs(args.num_samples, args.num_nodes, graph_types, args.output, 
+                   add_communities_to_generated=args.add_communities_to_generated) 

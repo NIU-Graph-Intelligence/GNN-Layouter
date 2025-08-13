@@ -4,11 +4,46 @@ import torch.nn.functional as F
 from models.mlp_layers import MLPFactory, WeightInitializer
 from models.coordinate_layers import CoordinateNormalizer
 
+# Try to import config, but don't fail if not available (for backwards compatibility)
+try:
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    from config_utils.config_manager import get_config
+    _CONFIG_AVAILABLE = True
+except ImportError:
+    _CONFIG_AVAILABLE = False
+
 
 class GNN_ChebConv(nn.Module):
-    def __init__(self, input_dim, hidden_channels=64, num_layers=3, K=2, dropout=0.4, use_residual=True):
+    def __init__(self, input_dim, hidden_channels=None, num_layers=None, K=None, dropout=None, use_residual=None):
 
         super().__init__()
+
+        # Load config defaults if available
+        if _CONFIG_AVAILABLE:
+            try:
+                config = get_config()
+                model_config = config.get_model_config('ChebConv')
+                hidden_channels = hidden_channels or model_config.get('hidden_channels', 64)
+                num_layers = num_layers or model_config.get('num_layers', 3)
+                K = K or model_config.get('K', 2)
+                dropout = dropout or model_config.get('dropout', 0.4)
+                use_residual = use_residual if use_residual is not None else model_config.get('use_residual', True)
+            except Exception:
+                # If config loading fails, use provided values or defaults
+                hidden_channels = hidden_channels or 64
+                num_layers = num_layers or 3
+                K = K or 2
+                dropout = dropout or 0.4
+                use_residual = use_residual if use_residual is not None else True
+        else:
+            # Fallback defaults if config not available
+            hidden_channels = hidden_channels or 64
+            num_layers = num_layers or 3
+            K = K or 2
+            dropout = dropout or 0.4
+            use_residual = use_residual if use_residual is not None else True
 
         self.dropout = dropout
         self.use_residual = use_residual

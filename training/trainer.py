@@ -8,22 +8,57 @@ import networkx as nx
 import numpy as np
 from typing import Dict, Optional
 from abc import ABC, abstractmethod
-from evaluation import evaluate, circular_layout_loss, forceGNN_loss
 from torch.optim import lr_scheduler
 
+# Import config manager
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(PROJECT_ROOT)
+
+from config_utils.config_manager import get_config
+from training.evaluation import evaluate, circular_layout_loss, forceGNN_loss
+
 class BaseTrainer:
-    def __init__(self, model, device, config):
+    def __init__(self, model, device, config, layout_type='circular'):
         
         self.model = model
         self.device = device
         self.config = config
+        self.layout_type = layout_type
         
-        # Setup optimizer
-        self.optimizer = optim.Adam(
-            self.model.parameters(),
-            lr=config['learning_rate'],
-            weight_decay=config['weight_decay']
-        )
+        # Load global config for optimization settings
+        self.global_config = get_config()
+        opt_config = self.global_config.get_optimization_config(layout_type)
+        
+        # Setup optimizer based on config
+        optimizer_type = opt_config.get('optimizer', 'Adam')
+        if optimizer_type == 'AdamW':
+            self.optimizer = optim.AdamW(
+                self.model.parameters(),
+                lr=config['learning_rate'],
+                weight_decay=config['weight_decay'],
+                betas=opt_config.get('betas', [0.9, 0.999])
+            )
+        else:  # Default to Adam
+            self.optimizer = optim.Adam(
+                self.model.parameters(),
+                lr=config['learning_rate'],
+                weight_decay=config['weight_decay']
+            )
+        
+        # Setup scheduler based on config
+        scheduler_config = opt_config.get('scheduler', {})
+        if scheduler_config.get('type') == 'ReduceLROnPlateau':
+            self.scheduler = lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode=scheduler_config.get('mode', 'min'),
+                factor=scheduler_config.get('factor', 0.8),
+                patience=scheduler_config.get('patience', 70),
+                min_lr=scheduler_config.get('min_lr', 1e-6),
+                verbose=True
+            )
+        else:
+            self.scheduler = None
         
         # Training metrics
         self.train_losses = []
@@ -66,7 +101,7 @@ class BaseTrainer:
 class CircularLayoutTrainer(BaseTrainer):
     def __init__(self, model: nn.Module, device: torch.device, config: Dict):
 
-        super().__init__(model, device, config)
+        super().__init__(model, device, config, layout_type='circular')
     
     def get_loss_type(self) -> str:
         return 'circular'
@@ -158,25 +193,7 @@ class CircularLayoutTrainer(BaseTrainer):
 class ForceDirectedTrainer(BaseTrainer):
     def __init__(self, model: nn.Module, device: torch.device, config: Dict):
 
-        super().__init__(model, device, config)
-        
-        # Use AdamW optimizer with different default parameters
-        self.optimizer = optim.AdamW(
-            model.parameters(),
-            lr=config.get('learning_rate', 0.0001),
-            weight_decay=config.get('weight_decay', 0.01),
-            betas=(0.9, 0.999)
-        )
-        
-        # Add learning rate scheduler
-        self.scheduler = lr_scheduler.ReduceLROnPlateau(
-            self.optimizer,
-            mode='min',
-            factor=0.7,
-            patience=500,
-            min_lr=1e-6,
-            verbose=True
-        )
+        super().__init__(model, device, config, layout_type='force_directed')
     
     def get_loss_type(self) -> str:
         return 'forceGNN'
@@ -232,8 +249,9 @@ class ForceDirectedTrainer(BaseTrainer):
             train_loss = self.train_epoch(train_loader)
             val_loss = self.validate(val_loader)
             
-            # Update learning rate scheduler
-            self.scheduler.step(val_loss)
+            # Update learning rate scheduler if available
+            if self.scheduler:
+                self.scheduler.step(val_loss)
             
             # Record losses
             self.train_losses.append(train_loss)
@@ -276,8 +294,10 @@ class ForceDirectedTrainer(BaseTrainer):
         ax_loss.legend()
         ax_loss.grid(True)
         
-        # Save plot
+        # Save plot with config DPI
         plot_path = save_path.replace('.pt', '_training_curve.png')
-        plt.savefig(plot_path)
+        viz_config = self.global_config.get_visualization_config()
+        dpi = viz_config.get('dpi', 300)
+        plt.savefig(plot_path, dpi=dpi)
         plt.close()
         print(f'Training curve saved to {plot_path}')

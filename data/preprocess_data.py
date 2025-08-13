@@ -56,9 +56,16 @@ def process_circular_layout(adj_data, layout_data, feature_types):
     # Process coordinates in order of node indices
     coords = np.zeros((num_nodes, 2))
     layout_dict = layout_data['layout']
+    nodes_with_coords = 0
     for node_idx in range(num_nodes):
         if node_idx in layout_dict:
             coords[node_idx] = layout_dict[node_idx]
+            nodes_with_coords += 1
+    
+    # Check if we have enough valid coordinates
+    if nodes_with_coords == 0:
+        print(f"Warning: No coordinates found for circular layout graph {adj_data['graph_id']}")
+        return None
     
     # Create edge index from adjacency matrix
     rows, cols = adj_matrix.nonzero()
@@ -73,8 +80,20 @@ def process_circular_layout(adj_data, layout_data, feature_types):
         deg = degree(row, num_nodes=num_nodes, dtype=torch.float32).unsqueeze(1)
         x = torch.cat([x, deg], dim=1) if x is not None else deg
     
+    # Normalize coordinates with better handling of edge cases
+    coord_mean = coords.mean(axis=0)
+    coord_std = coords.std(axis=0)
+    
+    # Handle case where std is very small or zero
+    coord_std = np.where(coord_std < 1e-6, 1.0, coord_std)
+    
     # Normalize coordinates
-    coords = (coords - coords.mean(axis=0)) / (coords.std(axis=0) + 1e-5)
+    coords = (coords - coord_mean) / coord_std
+    
+    # Check for NaN or inf values after normalization
+    if np.isnan(coords).any() or np.isinf(coords).any():
+        print(f"Warning: NaN/Inf detected after normalization for circular layout graph {adj_data['graph_id']}")
+        return None
     
     # Create PyG Data object
     data = Data(
@@ -97,9 +116,19 @@ def process_force_directed_layout(adj_data, layout_data, feature_types, initial_
     # Process coordinates using node mapping
     coords = np.zeros((num_nodes, 2))
     layout_dict = layout_data['layout']
+    nodes_with_coords = 0
     for orig_id, mapped_idx in node_mapping.items():
         if orig_id in layout_dict:
             coords[mapped_idx] = layout_dict[orig_id]
+            nodes_with_coords += 1
+    
+    # Check if we have enough valid coordinates
+    if nodes_with_coords == 0:
+        print(f"Warning: No coordinates found for graph {graph_id}")
+        return None
+    
+    if nodes_with_coords < num_nodes:
+        print(f"Warning: Only {nodes_with_coords}/{num_nodes} nodes have coordinates for graph {graph_id}")
     
     # Create edge index and edge weights from adjacency matrix
     rows, cols = adj_matrix.nonzero()
@@ -126,9 +155,40 @@ def process_force_directed_layout(adj_data, layout_data, feature_types, initial_
         deg = degree(row, num_nodes=num_nodes, dtype=torch.float32).unsqueeze(1)
         x = torch.cat([x, deg], dim=1) if x is not None else deg
     
-    # Normalize coordinates
+    # Normalize coordinates with better handling of edge cases
     original_coords = coords.copy()
-    normalized_coords = (coords - coords.mean(axis=0)) / (coords.std(axis=0) + 1e-5)
+    
+    # Check for valid coordinates (not all zeros)
+    non_zero_mask = np.any(coords != 0, axis=1)
+    if not np.any(non_zero_mask):
+        print(f"Warning: All coordinates are zero for graph {graph_id}")
+        return None
+    
+    # Calculate mean and std, handling edge cases
+    coord_mean = coords.mean(axis=0)
+    coord_std = coords.std(axis=0)
+    
+    # Handle case where std is very small or zero
+    coord_std = np.where(coord_std < 1e-6, 1.0, coord_std)
+    
+    # Use milder normalization to preserve relative structure
+    # Center the coordinates but use a global scale factor instead of per-dimension std
+    centered_coords = coords - coord_mean
+    global_scale = max(centered_coords.std(), 1e-6)  # Use overall standard deviation
+    normalized_coords = centered_coords / global_scale
+    
+    # Alternative: Use range-based normalization to preserve aspect ratio
+    # coord_range = np.ptp(coords, axis=0)  # peak-to-peak (max - min) per dimension
+    # coord_range = np.where(coord_range < 1e-6, 1.0, coord_range)
+    # normalized_coords = (coords - coord_mean) / coord_range.max()  # Use max range for isotropic scaling
+    
+    # Check for NaN or inf values after normalization
+    if np.isnan(normalized_coords).any() or np.isinf(normalized_coords).any():
+        print(f"Warning: NaN/Inf detected after normalization for graph {graph_id}")
+        print(f"  Coordinate mean: {coord_mean}")
+        print(f"  Coordinate std: {coord_std}")
+        print(f"  Original coord range: [{coords.min():.6f}, {coords.max():.6f}]")
+        return None
     
     # Create PyG Data object with force-directed specific attributes
     data = Data(
@@ -149,6 +209,20 @@ def process_force_directed_layout(adj_data, layout_data, feature_types, initial_
                 init_coords[mapped_idx] = init_dict[orig_id]
         data.init_coords = torch.from_numpy(init_coords).float()
     
+    # Add community information if available (for force-directed layouts)
+    if 'community' in layout_data and 'num_communities' in layout_data:
+        community_dict = layout_data['community']
+        num_communities = layout_data['num_communities']
+        
+        # Convert community dictionary to tensor using node mapping
+        community_tensor = torch.zeros(num_nodes, dtype=torch.long)
+        for orig_id, mapped_idx in node_mapping.items():
+            if orig_id in community_dict:
+                community_tensor[mapped_idx] = community_dict[orig_id]
+        
+        data.community = community_tensor
+        data.num_communities = torch.tensor(num_communities)
+    
     return data
 
 def prepare_dataset(layouts, adjacency_matrices, layout_type, feature_types, initial_positions=None):
@@ -163,7 +237,9 @@ def prepare_dataset(layouts, adjacency_matrices, layout_type, feature_types, ini
             adj_data = next((adj for adj in adjacency_matrices if adj['graph_id'] == graph_id), None)
             if adj_data:
                 data = process_circular_layout(adj_data, layout_data, feature_types)
-                dataset.append(data)
+                # Only add to dataset if processing was successful (not None)
+                if data is not None:
+                    dataset.append(data)
     
     # For force-directed layouts
     else:
@@ -178,7 +254,9 @@ def prepare_dataset(layouts, adjacency_matrices, layout_type, feature_types, ini
                 data = process_force_directed_layout(
                     adj_data, layout_data, feature_types, init_pos
                 )
-                dataset.append(data)
+                # Only add to dataset if processing was successful (not None)
+                if data is not None:
+                    dataset.append(data)
     
     return dataset
 
@@ -201,7 +279,7 @@ def main():
                       help='Path to initial positions file (required for force-directed)')
     parser.add_argument('--output-dir', type=str, default='data/processed',
                       help='Output directory for processed data')
-    parser.add_argument('--output-name', type=str,
+    parser.add_argument('--output-name', type=str, 
                       help='Custom name for output file (default: processed_[layout-type]_[features].pt)')
     
     args = parser.parse_args()
@@ -240,7 +318,7 @@ def main():
     else:
         output_file = os.path.join(
             args.output_dir,
-            f"processed_{args.layout_type}_{'_'.join(feature_types)}.pt"
+            f"processed5000_{args.layout_type}_{'_'.join(feature_types)}.pt"
         )
     
     data_dict = {
@@ -256,6 +334,13 @@ def main():
     # Print dataset statistics
     print(f"\nDataset statistics:")
     print(f"Number of graphs: {len(dataset)}")
+    
+    # Community statistics
+    community_graphs = sum(1 for data in dataset if hasattr(data, 'community'))
+    non_community_graphs = len(dataset) - community_graphs
+    print(f"Graphs with community info: {community_graphs}")
+    print(f"Graphs without community info: {non_community_graphs}")
+    
     if len(dataset) > 0:
         print(f"Node features shape: {dataset[0].x.shape}")
         print(f"Edge index shape: {dataset[0].edge_index.shape}")
@@ -266,6 +351,15 @@ def main():
             print(f"Original coordinates shape: {dataset[0].original_y.shape}")
         if hasattr(dataset[0], 'init_coords'):
             print(f"Initial coordinates shape: {dataset[0].init_coords.shape}")
+        if hasattr(dataset[0], 'community'):
+            print(f"Community tensor shape: {dataset[0].community.shape}")
+            print(f"Number of communities: {dataset[0].num_communities.item()}")
+            
+        # Show community distribution example
+        if community_graphs > 0:
+            example_graph = next(data for data in dataset if hasattr(data, 'community'))
+            unique_comms, counts = torch.unique(example_graph.community, return_counts=True)
+            print(f"Example community distribution: {dict(zip(unique_comms.tolist(), counts.tolist()))}")
 
 if __name__ == "__main__":
     main() 

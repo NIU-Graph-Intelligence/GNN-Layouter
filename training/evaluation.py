@@ -16,15 +16,22 @@ def evaluate(model, loader, device, loss_type='circular'):
 
 
 def forceGNN_loss(pred_coords, true):
-
+    """
+    Calculate MSE loss for force-directed layouts.
+    
+    Args:
+        pred_coords: Predicted coordinates [batch_size, nodes_per_graph, 2]
+        true: True coordinates [batch_size, nodes_per_graph, 2]
+    """
     batch_size = pred_coords.shape[0]
     nodes_per_graph = pred_coords.shape[1]
     
-    # Reshape predictions to match target shape
-    pred_coords_flat = pred_coords.reshape(-1, 2)
+    # Both tensors should already be in the correct shape
+    # No reshaping needed since we fixed the model output
     
     criterion = MSELoss()
-    loss = criterion(pred_coords_flat, true)
+    loss = criterion(pred_coords, true)
+    
     return loss
 
 
@@ -121,6 +128,8 @@ def circular_layout_loss(pred_coords, true_coords, x):
                   0.3 * spacing_loss +
                   0.2 * center_loss +
                   0.1 * distance_loss)
+
+    # total_loss = coord_loss + 0.3 *
 
     return total_loss
 

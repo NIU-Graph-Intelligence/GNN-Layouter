@@ -1,221 +1,243 @@
 # GNN-Layouter
 
-A Graph Neural Network (GNN) based approach for generating and optimizing graph layouts, supporting multiple layout algorithms including Force-Directed and Circular layouts.
+A comprehensive Graph Neural Network (GNN) based framework for generating and optimizing graph layouts, supporting multiple layout algorithms including Force-Directed and Circular layouts with advanced deep learning architectures.
 
-## Features
+## 🚀 Features
 
-- **Graph Dataset Generation:** Generate synthetic graph data with different graph models (ER, WS, BA)
-- **Multiple Layout Algorithms:** 
-  - Force-Directed Layouts (FR and FA2)
-  - Circular Layouts (from previous implementation)
-- **Graph Processing:**
-  - Adjacency Matrix Generation
-  - Community Detection
-  - Layout Generation and Optimization
-- **Data Preprocessing:** Preprocess generated graph data for model training
-- **Model Training:** Train GNN models on preprocessed graph data
+### **Graph Neural Network Models**
+- **ForceGNN**: Specialized GNN for force-directed layout generation with physics-inspired loss functions
+- **ChebConv**: Chebyshev spectral graph convolution networks for efficient graph processing
+- **GAT (Graph Attention Networks)**: Attention-based models for layout generation with node importance
+- **GIN (Graph Isomorphism Networks)**: Powerful graph neural networks with theoretical guarantees
+- **GCN (Graph Convolutional Networks)**: Classic graph convolution for baseline comparisons
 
-## Project Structure
+### **Layout Algorithms**
+- **Force-Directed Layouts**: 
+  - Fruchterman-Reingold (FR) algorithm
+  - ForceAtlas2 (FA2) algorithm
+- **Circular Layouts**: Traditional circular arrangement for comparison
+
+### **Advanced Features**
+- **Centralized Configuration Management**: Single `config.json` for all parameters
+- **Modular Architecture**: Flexible and extensible codebase design
+- **Multiple Optimizers**: Adam, SGD, and custom optimization strategies
+- **Comprehensive Evaluation**: MSE, visualization, and layout quality metrics
+- **Batch Processing**: Efficient handling of large graph datasets
+
+## 📁 Project Structure
 
 ```
 GNN-Layouter/
-├── data/
-│   ├── ForceDirectedLayouts.py   # Force-directed layout generation (FR and FA2)
-│   └── raw/
-│       ├── graph_dataset/        # Contains graph datasets
-│       ├── layouts/             # Generated layouts
-│       └── adjacency_matrices/  # Generated adjacency matrices
-└── utils/                      # Utility functions and visualization tools
+├── config.json                          # Centralized configuration file
+├── config_utils/                        # Configuration management
+│   ├── config_manager.py                # Configuration loading and access
+│   └── visualization.py                 # Unified visualization tools
+├── data/                                # Data handling and preprocessing
+│   ├── dataset.py                       # Dataset loaders and utilities
+│   ├── generate_graphs.py               # Graph generation scripts
+│   ├── generate_layouts.py              # Layout generation utilities
+│   └── preprocess_data.py               # Data preprocessing pipelines
+├── models/                              # Neural network architectures
+│   ├── ChebConv.py                      # Chebyshev convolution models
+│   ├── GAT.py                           # Graph Attention Networks
+│   ├── GIN.py                           # Graph Isomorphism Networks
+│   ├── GCN.py                           # Graph Convolutional Networks
+│   ├── GCNFR.py                         # Force-directed GNN (ForceGNN)
+│   ├── mlp_layers.py                    # Modular MLP components
+│   └── coordinate_layers.py             # Coordinate transformation layers
+├── training/                            # Training and evaluation
+│   ├── train.py                         # Main training script
+│   ├── trainer.py                       # Training pipeline classes
+│   └── Eval_MSE.py                      # Model evaluation and metrics
+|   └── evaluation.py                    # Loss Function and loader
+├── results/                             # Training results and outputs
+├── requirements.txt                     # Python dependencies
+└── *.sh                                 # Shell scripts for automation
 ```
 
-## Layout Algorithms
+## 🛠️ Setup and Installation
 
-### Force-Directed Layouts
-The project implements two popular force-directed layout algorithms:
+### **Prerequisites**
+- Python 3.8+ (recommended: Python 3.9-3.11)
+- CUDA-compatible GPU (optional, for faster training)
 
-1. **Fruchterman-Reingold (FR)** Layout
-   - Physics-based layout algorithm
-   - Balances attractive and repulsive forces between nodes
-   - Suitable for medium-sized graphs
-   - Generated using `ForceDirectedLayouts.py`
 
-2. **ForceAtlas2 (FA2)** Layout
-   - Continuous force-directed layout algorithm
-   - Better for preserving community structures
-   - Handles larger graphs efficiently
-   - Generated using `ForceDirectedLayouts.py`
-
-### Previous Layout Implementations
-- Circular layouts
-
-## Setup and Installation
-
-### 1. Clone the Repository
+### **1. Clone the Repository**
 ```bash
-git clone https://github.com/NIU-Graph-Intelligence/GNN-Layouter
+git clone https://github.com/NIU-Graph-Intelligence/GNN-Layouter.git
 cd GNN-Layouter
 ```
 
-### 2. Create and Activate a Virtual Environment (Recommended)
+### **2. Create Virtual Environment (Recommended)**
 ```bash
-# Create Virtual Environment
+# Create virtual environment
 python3 -m venv venv
 
-# Activate Virtual Environment
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # macOS/Linux
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
 ```
 
-### 3. Install Dependencies
+### **3. Install Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-## Usage
 
-### 1. Generating Force-Directed Layouts
+## ⚙️ Configuration
 
-The `ForceDirectedLayouts.py` script supports generating different types of layouts:
+The project uses a centralized configuration system through `config.json`. All model parameters, training settings, and paths are managed from this single file.
 
-```bash
-# Generate all layout types (adjacency matrices, FR, and FA2)
-python ForceDirectedLayouts.py --generate-adj --generate-fr --generate-fa2
 
-# Generate only Fruchterman-Reingold layouts
-python ForceDirectedLayouts.py --generate-fr
+## 🚀 Usage
 
-# Generate only ForceAtlas2 layouts
-python ForceDirectedLayouts.py --generate-fa2
+### **1. Data Generation**
 
-# Generate layouts with visualizations
-python ForceDirectedLayouts.py --generate-fr --generate-fa2 --visualize
-```
-
-### 2. Dataset
-The current project uses a dataset of community graphs (`community_graphs_dataset1024.pkl`) containing:
-- 1020 graphs
-- 40 nodes per graph
-- Community information for each node
-- Edge attributes and weights
-
-### 3. Output Files
-
-The script generates several types of output files:
-
-1. **Adjacency Matrices**: `data/raw/adjacency_matrices/Finaladjacency_matrix_1024.pkl`
-2. **Layout Files**:
-   - Initial Layouts: `data/raw/layouts/FinalInit_1024.pt`
-   - FR Layouts: `data/raw/layouts/FinalFR_1024.pt`
-   - FA2 Layouts: `data/raw/layouts/FinalFT2_1024.pt`
-
-## Requirements
-
-- Python 3.x
-- PyTorch
-- PyTorch Geometric
-- NetworkX
-- Matplotlib
-- NumPy
-
-## Note
-
-This repository currently focuses on Force-Directed layouts as an alternative to previously implemented layouts. The Force-Directed approach often provides more natural and aesthetically pleasing layouts, especially for graphs with community structures.
-
-# Machine Learning Based Graph Visualization
-
-This project generates synthetic graph datasets using various models like Erdős-Rényi (ER), Watts-Strogatz (WS), and Barabási-Albert (BA).
-
-## Features
-
-- **Graph Dataset Generation:** Generate synthetic graph data with different graph models.
-- **Graph Layout Generation:** Create various layouts such as circular, shell, and Kamada-Kawai for graph visualization.
-- **Adjacency Matrix Generation:** Generate adjacency matrices for graph data.
-- **Data Preprocessing:** Preprocess generated graph data for further analysis and model training.
-- **Model Training:** Train machine learning models on preprocessed graph data.
-
-## Prerequisites
-
-- Python 3.x
-- Bash shell (Linux/macOS)
-- pip (Python package installer)
-
-## Setup and Installation
-
-### 1. Clone the Repository
-Before running the project, clone the repository using the following command:
+Generate synthetic graph datasets with various properties:
 
 ```bash
-git clone https://github.com/NIU-Graph-Intelligence/GNN-Layouter
-cd GNN-Layouter
+# Generate graphs with different models (ER, WS, BA)
+python data/generate_graphs.py --num_samples 1000 --num_nodes 40
+
+# Generate layouts for existing graphs
+python data/generate_layouts.py --dataset data/processed/graphs.pkl
 ```
-### 2. Create and Activate a Virtual Environment ( Recommended )
-It is recommended to use a virtual environment to avoid conflicts with system packages.
+
+### **2. Training Models**
+
+#### **Basic Training**
+```bash
+# Train ForceGNN model on force-directed layouts
+python training/train.py --model ForceGNN --layout_type force_directed
+
+# Train GAT model on circular layouts  
+python training/train.py --model GAT --layout_type circular
+
+# Train with custom parameters (overrides config defaults)
+python training/train.py --model ChebConv --batch_size 128 --learning_rate 0.001
+```
+
+### **3. Model Evaluation**
 
 ```bash
-# Create Virtual Environment:
-python3 -m venv venv
+# Evaluate all trained models
+python training/Eval_MSE.py
 
-# Activate Virtual Environment:
-venv\Scripts\activate (Windows)
-source venv/bin/activate (macOS/Linux)
+# Evaluate specific model
+python training/Eval_MSE.py --model ForceGNN --layout_type force_directed
 
+# Generate evaluation visualizations
+python training/Eval_MSE.py --visualize --output_dir results/eval/
 ```
 
-### 3. Install Dependencies
-All required dependencies are listed in `requirements.txt`. Install them using:
+### **4. Visualization**
 
 ```bash
-pip install -r requirements.txt
+# Generate layout visualizations
+python config_utils/visualization.py --model ForceGNN --num_samples 10
+
+# Compare multiple models
+python config_utils/visualization.py --compare --models ForceGNN GAT ChebConv
+
+# Create training progress plots
+python config_utils/visualization.py --plot_training --model_path results/training/
 ```
 
-## 1. Data Generation
-
-To generate the dataset, use the `generate_graph_data.sh` script. This script allows you to create different types of graph datasets with configurable parameters.
-
-### Usage
-Run the following command to generate graph data:
+### **5. Batch Processing with Shell Scripts**
 
 ```bash
-./generate_graph_data.sh --output <output_dir> --num_samples <num_samples> [--graph_type <graph_type>] [--num_nodes <num_nodes>] [--output_filename <output_filename>]
+# Complete pipeline: data generation → training → evaluation
+./1.\ generate_data.sh
+./2.\ preprocessing.sh  
+./3.\ training.sh
+./4.\ eval_mse.sh
+./5.\ visualization.sh
+
+
+## 📊 Model Architectures
+
+### **ForceGNN (Force-Directed Specialized)**
+- **Purpose**: Physics-inspired layout generation
+- **Architecture**: Multi-layer node model with force processing
+- **Use Case**: Force-directed layouts (FR, FA2)
+- **Key Features**: Force message passing, coordinate prediction
+
+### **Graph Attention Networks (GAT)**
+- **Purpose**: Attention-based layout learning
+- **Architecture**: Multi-head attention mechanisms
+- **Use Case**: Both circular and force-directed layouts
+- **Key Features**: Node importance weighting, attention visualization
+
+### **Chebyshev Convolution (ChebConv)**
+- **Purpose**: Spectral graph analysis
+- **Architecture**: Chebyshev polynomial approximation
+- **Use Case**: Efficient large-graph processing
+- **Key Features**: Fast spectral convolution, scalability
+
+### **Graph Isomorphism Networks (GIN)**
+- **Purpose**: Theoretically powerful graph learning
+- **Architecture**: Sum aggregation with MLPs
+- **Use Case**: Complex graph pattern recognition
+- **Key Features**: Theoretical guarantees, high expressivity
+
+### **Graph Convolutional Networks (GCN)**
+- **Purpose**: Baseline graph convolution
+- **Architecture**: Simple neighborhood aggregation
+- **Use Case**: Comparison baseline
+- **Key Features**: Computational efficiency, interpretability
+
+## 📈 Training and Optimization
+
+### **Optimization Strategies**
+- **Adam Optimizer**: Default for most models with adaptive learning rates
+- **SGD with Momentum**: For stable convergence in specific cases
+- **Learning Rate Scheduling**: Cosine annealing and step decay
+- **Early Stopping**: Prevent overfitting with patience-based stopping
+
+### **Loss Functions**
+- **Force-Directed Loss**: Physics-inspired energy minimization
+- **MSE Loss**: Standard coordinate prediction loss
+- **Combined Loss**: Multi-objective optimization for layout quality
+
+### **Training Features**
+- **Mixed Precision Training**: Faster training with FP16
+- **Gradient Clipping**: Stable training for large graphs
+- **Batch Processing**: Efficient memory usage
+- **Checkpointing**: Resume training and model versioning
+
+## 📋 Requirements
+
+### **Core Dependencies**
+```
+torch>=1.12.0
+torch-geometric>=2.0.0
+networkx>=2.6
+numpy>=1.21.0
+matplotlib>=3.5.0
+scipy>=1.7.0
+pandas>=1.3.0
 ```
 
-### Arguments:
-- `--output` (required): Directory where the generated dataset will be saved.
-- `--num_samples` (required): Number of samples to generate for each graph type.
-- `--graph_type` (optional): Type of graph to generate. Choose from:
-  - `ws` (Watts-Strogatz)
-  - `er` (Erdős-Rényi)
-  - `ba` (Barabási-Albert)  
-  If not provided, all graph types will be generated.
-- `--num_nodes` (optional): Number of nodes in the graph (default: 50).
-- `--output_filename` (optional): Name of the output file (default: `graph_dataset.pkl`).
-- `--help`: Displays the usage instructions.
-
-## 2. Layout Generation for Graph Data
-
-This script is designed to generate layouts and adjacency matrices for a given graph dataset. The layout types include **circular**, **shell**, and **kamada_kawai**. You can customize the layout generation process by specifying the dataset path, layout type, and output directories.
-
-### Usage
-
-To generate graph layouts and adjacency matrices from a given dataset, use the following command:
-
-```bash
-./generate_layout_data.sh --dataset <dataset_path> --layout_output <layout_output_dir> --adjacency_output <adjacency_output_dir> --layout <layout_type>
+### **Optional Dependencies**
+```
+wandb>=0.12.0          # Experiment tracking
+tensorboard>=2.8.0     # Training visualization  
+plotly>=5.6.0          # Interactive visualizations
+seaborn>=0.11.0        # Statistical plotting
 ```
 
-### Arguments:
 
-- `--dataset` (required): Path to the input graph dataset (.pkl file).
-- `--layout_output` (required): Directory where the generated layout files will be saved.
-- `--adjacency_output` (required): Directory where the generated adjacency matrices will be saved.
-- `--layout` (required): Type of layout to generate. Choose from:
-  - `circular`: Generates a circular layout.
-  - `shell`: Generates a shell layout.
-  - `kamada_kawai`: Generates a Kamada-Kawai layout.
+## 📊 Evaluation Metrics
 
-## 3. Data Preprocessing
+### **Layout Quality Metrics**
+- **Mean Squared Error (MSE)**: Coordinate prediction accuracy
 
-### Usage
-```bash
-./data_preprocessing.sh [options]
-```
+### **Training Metrics** 
+- **Training Loss**: Model learning progress
+- **Validation Loss**: Generalization capability
+- **Learning Rate**: Optimization progress
+- **Training Time**: Computational efficiency
+
+

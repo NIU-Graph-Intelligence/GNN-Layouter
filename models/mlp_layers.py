@@ -4,6 +4,16 @@ import torch.nn.functional as F
 from typing import List, Optional
 from torch_geometric.nn import GATConv
 
+# Try to import config, but don't fail if not available (for backwards compatibility)
+try:
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    from config_utils.config_manager import get_config
+    _CONFIG_AVAILABLE = True
+except ImportError:
+    _CONFIG_AVAILABLE = False
+
 
 
 def create_position_mlp(in_channels, hidden_channels, dropout_rate, use_layer_norm, output_dim):
@@ -119,6 +129,20 @@ class MLPFactory:
     @classmethod
     def create(cls, mlp_type: str, **kwargs) -> nn.Sequential:
         
+        # Load config defaults if available
+        if _CONFIG_AVAILABLE:
+            try:
+                config = get_config()
+                mlp_config = config.get_mlp_config(mlp_type)
+                
+                # Apply config defaults for missing kwargs
+                for key, default_value in mlp_config.items():
+                    if key not in kwargs:
+                        kwargs[key] = default_value
+            except Exception:
+                # If config loading fails, continue with provided kwargs
+                pass
+        
         mlp_creators = {
             'position': create_position_mlp,
             'radius': create_radius_mlp,
@@ -130,8 +154,14 @@ class MLPFactory:
         if mlp_type not in mlp_creators:
             raise ValueError(f"Unknown MLP type: {mlp_type}. "
                            f"Available types: {list(mlp_creators.keys())}")
-            
-        mlp = mlp_creators[mlp_type](**kwargs)
+        
+        # Filter kwargs based on function signature
+        import inspect
+        creator_func = mlp_creators[mlp_type]
+        sig = inspect.signature(creator_func)
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+        
+        mlp = creator_func(**filtered_kwargs)
         mlp.apply(cls._init_weights)
         return mlp 
 

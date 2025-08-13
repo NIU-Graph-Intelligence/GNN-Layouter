@@ -1,3 +1,10 @@
 #!/bin/bash
 
-python3 training/train.py --model ForceGNN --data_path data/processed/processed_forcedirected_onehot.pt --batch_size 32 --num_epochs 2000 --learning_rate 0.002 --weight_decay 0.005 --layout_type force_directed
+# Train ForceGNN with config defaults (parameters automatically loaded from config.json)
+python3 training/train.py --model ForceGNN --layout_type force_directed
+
+# Train ChebConv with config defaults (parameters automatically loaded from config.json)
+#python3 training/train.py --model ChebConv --layout_type circular
+
+# Optional: Override specific parameters if needed
+# python3 training/train.py --model ForceGNN --layout_type force_directed --batch_size 128 --learning_rate 0.001

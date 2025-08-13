@@ -4,10 +4,31 @@ import torch.nn.functional as F
 from models.mlp_layers import MLPFactory, WeightInitializer
 from models.coordinate_layers import CoordinateNormalizer
 
+# Import config manager
+try:
+    from config_utils.config_manager import get_config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+
 
 class GCN(nn.Module):
-    def __init__(self, input_dim = 41, hidden_channels=192, dropout_rate=0.3):
+    def __init__(self, input_dim, hidden_channels=None, dropout_rate=None):
         super().__init__()
+        
+        # Load config defaults if available
+        if CONFIG_AVAILABLE:
+            config = get_config()
+            gcn_config = config.get_model_config('GCN')
+            
+            # Apply config defaults with fallback to hardcoded values
+            hidden_channels = hidden_channels or gcn_config.get('hidden_channels', 192)
+            dropout_rate = dropout_rate or gcn_config.get('dropout_rate', 0.3)
+        else:
+            # Fallback defaults if config not available
+            hidden_channels = hidden_channels or 192
+            dropout_rate = dropout_rate or 0.3
+        
         # input_dim = max_nodes # Store for reference
         self.dropout_rate = dropout_rate
 

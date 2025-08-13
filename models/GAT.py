@@ -5,11 +5,35 @@ from torch_geometric.nn import GATConv
 from models.mlp_layers import MLPFactory, ConvolutionalBlock, WeightInitializer
 from models.coordinate_layers import PolarCoordinates, CartesianCoordinates
 
+# Import config manager
+try:
+    from config_utils.config_manager import get_config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+
 
 class GAT(nn.Module):
-    def __init__(self, input_dim, hidden_channels=64, heads=8, num_layers=3, dropout=0.2):
+    def __init__(self, input_dim, hidden_channels=None, heads=None, num_layers=None, dropout=None):
         
         super().__init__()
+
+        # Load config defaults if available
+        if CONFIG_AVAILABLE:
+            config = get_config()
+            gat_config = config.get_model_config('GAT')
+            
+            # Apply config defaults with fallback to hardcoded values
+            hidden_channels = hidden_channels or gat_config.get('hidden_channels', 64)
+            heads = heads or gat_config.get('heads', 8)
+            num_layers = num_layers or gat_config.get('num_layers', 3)
+            dropout = dropout or gat_config.get('dropout', 0.2)
+        else:
+            # Fallback defaults if config not available
+            hidden_channels = hidden_channels or 64
+            heads = heads or 8
+            num_layers = num_layers or 3
+            dropout = dropout or 0.2
 
         # Input dimension setup
         self.dropout = dropout

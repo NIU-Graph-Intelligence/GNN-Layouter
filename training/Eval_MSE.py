@@ -14,6 +14,7 @@ from models_PPI import IGNN
 from models.GCNFR import ForceGNN
 from utils import get_spectral_rad
 from data.dataset import force_directed_data_loader
+from config_utils.config_manager import get_config
 
 
 def orthogonal_procrustes_torch(A, B):
@@ -117,56 +118,74 @@ def fr_net_force_metric(positions, edge_index, area=None):
     return net_force_magnitude.mean().item()
 
 # ---------- Model Registry ----------
-MODEL_REGISTRY = {
-    "IGNN": {
-        "class": IGNN,
-        "checkpoint": "IGNN_checkpoints/CustomOneHotOnlyIGNN_bs128_ep1000_HC64.pt",
-        "data_path": "data/processed/processed_forcedirected_onehot.pt",
-
-        "feature_func": lambda data: torch.cat([data.x, data.init_coords], dim=1).T,
-        "model_args":{
-            "nfeat": 42,  # Example values
-            "nhid": 64,
-            "nclass": 2,
-            "num_node": 40,
-            "dropout": 0.2,
-            "kappa": 0.8,
+def get_model_registry():
+    """Generate model registry from configuration"""
+    config = get_config()
+    
+    # Get model configurations
+    forcegnn_config = config.get_model_config('ForceGNN')
+    
+    MODEL_REGISTRY = {
+        "IGNN": {
+            "class": IGNN,
+            "checkpoint": "IGNN_checkpoints/CustomOneHotOnlyIGNN_bs128_ep500_HC64.pt",
+            "data_path": config.get_data_path('force_directed'),
+            "feature_func": lambda data: torch.cat([data.x, data.init_coords], dim=1).T,
+            "model_args":{
+                "nfeat": 44,  # Example values
+                "nhid": 64,
+                "nclass": 2,
+                "num_node": 40,
+                "dropout": 0.2,
+                "kappa": 0.8,
+            },
+            "forward_func": lambda model, data, adj: model(torch.cat([data.x, data.init_coords], dim=1).T, adj),
         },
-        "forward_func": lambda model, data, adj: model(torch.cat([data.x, data.init_coords], dim=1).T, adj),
-    },
-    "ForceGNN": {
-        "class": ForceGNN,
-        "checkpoint": "results/force_directed/ForceGNN/ForceDirected_ForceGNN_bs32_best.pt",
-        # "checkpoint": "results/metrics/ForceGNN/RandomdataWeights_ForceGNN_FR_batch16.pt",
-        "data_path": "data/processed/processed_forcedirected_onehot.pt",
-
-        "feature_func": lambda data: torch.cat([data.x, data.init_coords], dim=1),
-        "model_args": {
-            "in_feat": 42,  # 40 (one-hot) + 2 (coords)
-            "hidden_dim": 32,
-            "out_feat": 2,
-            "num_layers": 4,
+        "ForceGNN": {
+            "class": ForceGNN,
+            "checkpoint": config.get_model_path('force_forcegnn_32'),
+            "data_path": config.get_data_path('force_directed'),
+            "feature_func": lambda data: torch.cat([data.x, data.init_coords], dim=1),
+            "model_args": {
+                "in_feat": 44,  # 40 (one-hot) + 2 (coords) - could be calculated dynamically
+                "hidden_dim": forcegnn_config.get('hidden_dim', 32),
+                "out_feat": forcegnn_config.get('out_feat', 2),
+                "num_layers": forcegnn_config.get('num_layers', 4),
+            },
+            "forward_func": lambda model, data, adj: model(
+                data.x,
+                data.edge_index,
+                data.batch,  # Add batch information
+                data.init_coords if hasattr(data, "init_coords") else None
+            )
         },
-        "forward_func": lambda model, data, adj: model(
-            data.x,
-            data.edge_index,
-            data.batch,  # Add batch information
-            data.init_coords if hasattr(data, "init_coords") else None
-        )
-    },
-}
+    }
+    
+    return MODEL_REGISTRY
 
-def evaluate_model(model_class, checkpoint_path, dataset_path, feature_func, device, model_args, forward_func, batch_size=16):
+def evaluate_model(model_class, checkpoint_path, dataset_path, feature_func, device, model_args, forward_func, batch_size=None):
+    
+    # Load config for defaults
+    config = get_config()
+    data_config = config.get_data_config()
+    eval_config = config.get_evaluation_config()
+    
+    # Use config defaults if not provided
+    if batch_size is None:
+        batch_size = eval_config.get('batch_size', 1)
     
     data_dict = torch.load(dataset_path)
     full_dataset = data_dict['dataset']
     
-    # Get data loaders
+    # Get data loaders with config settings
+    splits = data_config.get('splits', [0.8, 0.1, 0.1])
+    random_state = data_config.get('random_state', 42)
+    
     train_loader, val_loader, test_loader = force_directed_data_loader(
         dataset=full_dataset,
         batch_size=batch_size,
-        splits=(0.8, 0.10, 0.10),
-        random_state=42
+        splits=splits,
+        random_state=random_state
     )
     
     # Instantiate model
@@ -222,23 +241,33 @@ def evaluate_model(model_class, checkpoint_path, dataset_path, feature_func, dev
     return avg_procrustes, avg_fr_force
 
 def main():
+    config = get_config()
+    eval_config = config.get_evaluation_config()
+    
     parser = argparse.ArgumentParser(description="Evaluate multiple GNN models on test dataset")
-    parser.add_argument("--device", type=str, default="cuda:0", help="Torch device (cuda:0 or cpu)")
-    parser.add_argument("--batch-size", type=int, default=1, help="Batch size for evaluation")
+    parser.add_argument("--device", type=str, 
+                       default=eval_config.get('device', 'cuda:0'), 
+                       help="Torch device (cuda:0 or cpu)")
+    parser.add_argument("--batch-size", type=int, 
+                       default=eval_config.get('batch_size', 1), 
+                       help="Batch size for evaluation")
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     results = {}
 
-    for model_name, config in MODEL_REGISTRY.items():
+    # Get model registry from configuration
+    MODEL_REGISTRY = get_model_registry()
+    
+    for model_name, model_config in MODEL_REGISTRY.items():
         avg_procrustes, avg_fr_force = evaluate_model(
-            model_class=config["class"],
-            checkpoint_path=config["checkpoint"],
-            dataset_path=config["data_path"],
-            feature_func=config["feature_func"],
+            model_class=model_config["class"],
+            checkpoint_path=model_config["checkpoint"],
+            dataset_path=model_config["data_path"],
+            feature_func=model_config["feature_func"],
             device=device,
-            model_args=config["model_args"],
-            forward_func=config["forward_func"],
+            model_args=model_config["model_args"],
+            forward_func=model_config["forward_func"],
             batch_size=args.batch_size
         )
         results[model_name] = {
