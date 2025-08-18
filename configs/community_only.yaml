@@ -1,0 +1,62 @@
+experiment_name: "community_only_experiment"
+
+graphs:
+  # 5000 community graphs with your specific requirements
+  - type: "Community"
+    num_graphs: 5000
+    num_nodes: 20-50
+    params:
+      # LFR parameters configured for your requirements
+      avg_degree: 4.5          # Average degree range (k parameter)
+      max_degree: 10            # Maximum degree (maxk parameter)
+      mixing_parameter: 0.1     # Topology mixing parameter (mut)
+      weight_mixing: 0.0        # Weight mixing parameter (muw) - 0 for unweighted
+      
+      # Degree and community size distributions
+      degree_exponent: 2.0      # t1: exponent for degree sequence
+      community_exponent: 1.0   # t2: exponent for community size distribution
+      weight_exponent: 1.5      # beta: exponent for weight distribution
+      
+      # Community size constraints to achieve ~2-12 communities for 20-50 nodes
+      min_community_size: 4     # Minimum community size (minc)
+      max_community_size: 12    # Maximum community size (maxc) - allows multiple communities
+      
+      # No overlapping communities
+      overlapping_nodes: 0      # Number of overlapping nodes (on)
+      overlapping_memberships: 0  # Number of memberships for overlapping nodes (om)
+      
+      # Generation settings
+      timeout: 30               # Timeout for each graph generation (seconds)
+      keep_failed_attempts: false  # Whether to keep temp files for failed generations
+      temp_root: "temp_lfr2"
+      seed: 42
+    output_prefix: "comm_5k"
+
+layouts:
+  # Force-directed layout
+  - type: "spring"
+    params:
+      iterations: 100
+      seed: 42
+    apply_to: ["comm_5k"]
+    save_initial: true
+
+datasets:
+  # Dataset with all 5000 community graphs - updated feature configuration
+  - name: "community_5k_force_directed"
+    graph_patterns: ["comm_5k*"]
+    layout_type: "spring"
+    features:
+      # Node-level features
+      degree: true
+      positional: true
+      onehot: false              # Set to true only if all graphs have same number of nodes
+      initial_position: true     # Requires save_initial: true in layouts
+      random: true
+      
+      # Graph-level features (same value for all nodes in a graph)
+      graph_size: true
+      graph_density: true
+      graph_density_norm: true   # Normalized version of graph_density
+      clustering_coefficient: true
+      clustering_coefficient_norm: true  # Normalized version of clustering_coefficient

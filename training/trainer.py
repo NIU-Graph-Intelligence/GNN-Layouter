@@ -55,7 +55,6 @@ class BaseTrainer:
                 factor=scheduler_config.get('factor', 0.8),
                 patience=scheduler_config.get('patience', 70),
                 min_lr=scheduler_config.get('min_lr', 1e-6),
-                verbose=True
             )
         else:
             self.scheduler = None

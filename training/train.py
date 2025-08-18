@@ -1,7 +1,10 @@
+import sys
+print(sys.executable)
 import torch
 import os
 import sys
 import argparse
+
 
 # Add the project root directory to Python path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -34,9 +37,9 @@ def parse_args():
     config = get_config()
     
     parser = argparse.ArgumentParser(description='Train graph layout models')
-    parser.add_argument('--model', type=str, required=True, choices=MODEL_CLASSES.keys(),
+    parser.add_argument('--model', type=str, default='ForceGNN', choices=MODEL_CLASSES.keys(),
                       help='Model architecture to use')
-    parser.add_argument('--layout_type', type=str, default='circular', choices=['circular', 'force_directed'],
+    parser.add_argument('--layout_type', type=str, default='force_directed', choices=['circular', 'force_directed'],
                       help='Type of layout to train')
     
     # Optional overrides - use config defaults if not provided
@@ -76,7 +79,7 @@ def setup_model_and_data(args):
     data_config = config.get_data_config()
     
     try:
-        data_dict = torch.load(args.data_path, map_location=DEVICE)
+        data_dict = torch.load(args.data_path, map_location=DEVICE, weights_only=False)
         dataset = data_dict['dataset']
     except Exception as e:
         print(f"Error loading dataset: {e}")

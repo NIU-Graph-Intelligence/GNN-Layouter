@@ -58,8 +58,12 @@ GNN-Layouter/
 ## 🛠️ Setup and Installation
 
 ### **Prerequisites**
-- Python 3.8+ (recommended: Python 3.9-3.11)
-- CUDA-compatible GPU (optional, for faster training)
+
+
+```
+sudo apt update
+sudo apt install python3.10 python3.10-venv python3.10-dev python3.10-distutils
+```
 
 
 ### **1. Clone the Repository**
@@ -70,22 +74,15 @@ cd GNN-Layouter
 
 ### **2. Create Virtual Environment (Recommended)**
 ```bash
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
-# On macOS/Linux:
-source venv/bin/activate
-# On Windows:
-venv\Scripts\activate
+python3.10 -m venv .venv
+source .venv/bin/activate
 ```
 
 ### **3. Install Dependencies**
 ```bash
-pip install -r requirements.txt
+pip install --upgrade pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-pip install torch-geometric
-pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.5.0+cu121.html
+pip install -r requirements.txt
 
 ```
 

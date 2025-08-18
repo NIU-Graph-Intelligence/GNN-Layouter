@@ -285,3 +285,8 @@ data/raw/*
 # Results directory (ignore contents)
 results/*
 !results/.gitkeep
+data/graphs/*
+data/layers/*
+data/processed/*
+temp_lfr
+lfrbench_udwov
