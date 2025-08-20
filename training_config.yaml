@@ -1,0 +1,73 @@
+# Training configuration for different layout types
+force_directed:
+  lr: 0.001
+  batch_size: 32
+  epochs: 1000
+  weight_decay: 0.01
+  min_epochs: 100
+  max_patience: 50
+
+circular:
+  lr: 0.003
+  batch_size: 64
+  epochs: 500
+  weight_decay: 0.005
+  min_epochs: 50
+  max_patience: 30
+
+# Model-specific configurations
+models:
+  # Standard PyG models
+  GCN:
+    hidden_dim: 64
+    num_layers: 3
+    dropout: 0.1
+    
+  GAT:
+    hidden_dim: 64
+    num_layers: 3
+    heads: 4
+    dropout: 0.1
+    
+  GraphSAGE:
+    hidden_dim: 64
+    num_layers: 3
+    dropout: 0.1
+  
+  # Custom models (if available)
+  CustomGCN:
+    hidden_channels: 64
+    dropout_rate: 0.1
+    
+  CustomGAT:
+    hidden_channels: 64
+    num_layers: 3
+    heads: 4
+    dropout: 0.1
+    
+  CustomGIN:
+    hidden_channels: 64
+    num_layers: 3
+    dropout: 0.1
+    
+  CustomChebConv:
+    hidden_channels: 64
+    num_layers: 3
+    K: 3
+    dropout: 0.1
+  
+  ForceGNN:
+    hidden_dim: 32
+    num_layers: 4
+
+# Data configuration
+data:
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  random_state: 42
+
+# Other settings
+device: "auto"  # "auto", "cpu", "cuda"
+save_results: true
+results_dir: "results"

@@ -48,7 +48,7 @@ class ConfigManager:
         os.makedirs(configs_dir, exist_ok=True)
 
 def load_experiment_config(config_name: str) -> Dict[str, Any]:
-    """Load experiment configuration file"""
+    """Load experiment configuration file for data generation"""
     config_manager = ConfigManager()
     configs_dir = config_manager.get_path('experiment_configs')
     
@@ -60,6 +60,14 @@ def load_experiment_config(config_name: str) -> Dict[str, Any]:
     
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Experiment config not found: {config_path}")
+    
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
+
+def load_training_config(config_path: str = "training_config.yaml") -> Dict[str, Any]:
+    """Load training configuration file"""
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Training config not found: {config_path}")
     
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)

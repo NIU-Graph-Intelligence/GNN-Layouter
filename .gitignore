@@ -290,3 +290,5 @@ data/layers/*
 data/processed/*
 temp_lfr
 lfrbench_udwov
+resultes/*
+visualizations/*
