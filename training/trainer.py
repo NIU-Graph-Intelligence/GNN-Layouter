@@ -94,21 +94,23 @@ class Trainer:
               train_loader: DataLoader, 
               val_loader: DataLoader,
               save_dir: str,
+              save_filename: str,
               model_name: str) -> Optional[str]:
         """
-        Train the model.
+        Train the model with flexible file naming.
         
         Args:
             train_loader: Training data loader
             val_loader: Validation data loader
             save_dir: Directory to save checkpoints
-            model_name: Name for saving files
+            save_filename: Specific filename for the checkpoint
+            model_name: Name for logging purposes
             
         Returns:
             Path to best checkpoint if successful, None otherwise
         """
         os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, f'{model_name}_{self.loss_type}_best.pt')
+        save_path = os.path.join(save_dir, save_filename)
         
         print(f"Training {model_name} for {self.loss_type} layout")
         print(f"Saving checkpoints to {save_path}")

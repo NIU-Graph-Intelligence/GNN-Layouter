@@ -8,6 +8,7 @@ import os
 import sys
 import argparse
 import torch
+import json
 
 # Add project root to path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -125,6 +126,47 @@ MODEL_CLASSES = {
     # Custom models (if available)
     **CUSTOM_MODELS
 }
+
+def get_config_string_from_yaml(model_name, model_config):
+    """
+    Extract hyperparameters from YAML config to create unique filename suffix.
+    
+    Args:
+        model_name: Name of the model
+        model_config: Dictionary of model hyperparameters from YAML
+    
+    Returns:
+        String representation of hyperparameters for filename
+    """
+    if not model_config:
+        return "default"
+    
+    param_parts = []
+    for param, value in sorted(model_config.items()):
+        # Abbreviate common parameter names for shorter filenames
+        param_abbrev = {
+            'hidden_dim': 'h',
+            'hidden_channels': 'h',
+            'num_layers': 'l', 
+            'heads': 'head',
+            'dropout': 'd',
+            'dropout_rate': 'd',
+            'weight_decay': 'wd',
+            'learning_rate': 'lr',
+            'batch_size': 'bs',
+            'epochs': 'ep',
+            'K': 'k'
+        }.get(param, param)
+        
+        # Format float values to avoid overly long decimals
+        if isinstance(value, float):
+            value_str = f"{value:.3f}".rstrip('0').rstrip('.')
+        else:
+            value_str = str(value)
+            
+        param_parts.append(f"{param_abbrev}{value_str}")
+    
+    return "_".join(param_parts)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train graph layout models')
@@ -277,6 +319,22 @@ def main():
     model = create_model(args.model, input_dim, config)
     model = model.to(device)
     
+    # Generate config string for unique filename
+    model_config = config.get('models', {}).get(args.model, {})
+    config_str = get_config_string_from_yaml(args.model, model_config)
+    
+    # Setup save directory with hyperparameter-based filename
+    save_dir = os.path.join(args.results_dir, args.layout_type, args.model)
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # Create unique filename based on hyperparameters
+    if config_str == "default":
+        save_filename = f'{args.model}_{args.layout_type}_default_best.pt'
+    else:
+        save_filename = f'{args.model}_{args.layout_type}_{config_str}_best.pt'
+        
+    print(f"Model will be saved as: {save_filename}")
+    
     # Create trainer
     trainer = Trainer(
         model=model,
@@ -285,16 +343,13 @@ def main():
         **training_params
     )
     
-    # Setup save directory
-    save_dir = os.path.join(args.results_dir, args.layout_type, args.model)
-    os.makedirs(save_dir, exist_ok=True)
-    
-    # Train model
+    # Train model with updated save path
     print("\nStarting training...")
     checkpoint_path = trainer.train(
         train_loader=train_loader,
         val_loader=val_loader,
         save_dir=save_dir,
+        save_filename=save_filename,  # Pass the filename separately
         model_name=args.model
     )
     
@@ -316,10 +371,12 @@ def main():
         for metric, value in test_metrics.items():
             print(f"  {metric}: {value:.6f}")
         
-        # Save final results
+        # Prepare results for saving
         results = {
             'args': vars(args),
             'training_params': training_params,
+            'model_config': model_config,
+            'config_string': config_str,
             'dataset_info': dataset_info,
             'test_loss': test_loss,
             'test_metrics': test_metrics,
@@ -327,9 +384,26 @@ def main():
             'total_epochs': len(trainer.train_losses)
         }
         
+        # Save as .pt format (for programmatic reading)
         results_path = checkpoint_path.replace('.pt', '_results.pt')
         torch.save(results, results_path)
+        
+        # Save as .json format (for human reading)
+        json_path = checkpoint_path.replace('.pt', '_results.json')
+        
+        # Convert tensors to serializable format for JSON
+        json_results = {}
+        for key, value in results.items():
+            if isinstance(value, torch.Tensor):
+                json_results[key] = value.item() if value.numel() == 1 else value.tolist()
+            else:
+                json_results[key] = value
+        
+        with open(json_path, 'w') as f:
+            json.dump(json_results, f, indent=2)
+        
         print(f"Results saved to: {results_path}")
+        print(f"Human-readable results saved to: {json_path}")
         
     else:
         print("Training failed!")

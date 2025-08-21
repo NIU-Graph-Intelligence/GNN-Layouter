@@ -57,7 +57,7 @@ models:
     dropout: 0.1
   
   ForceGNN:
-    hidden_dim: 32
+    hidden_dim: 64
     num_layers: 4
 
 # Data configuration
