@@ -28,8 +28,8 @@ graphs:
       # Generation settings
       timeout: 30               # Timeout for each graph generation (seconds)
       keep_failed_attempts: false  # Whether to keep temp files for failed generations
-      temp_root: "temp_lfr2"
-      seed: 42
+      temp_root: "temp_lfr"
+      seed: 12345
     output_prefix: "comm_5k"
 
 layouts:
