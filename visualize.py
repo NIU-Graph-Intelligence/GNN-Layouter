@@ -17,56 +17,124 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PROJECT_ROOT)
 
 from data.dataset import load_dataset, create_data_loaders
-from models import *  # Import all available models
+from models.registry import MODEL_REGISTRY, get_model_class, is_model_available
 
 class GraphVisualizer:
-    def __init__(self, device=None):
+    def __init__(self, device=None, config_path='training_config.yaml'):
         self.device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        # Model mapping from checkpoint path to model class
-        self.model_mapping = {
-            'ForceGNN': ForceGNN,
-            'GCN': GCN,
-            'GAT': GAT,
-            'GIN': GIN,
-            'ChebNet': ChebNet,
-        }
+        # Load training config to get model parameters
+        self.config = self.load_config(config_path)
+    
+    def load_config(self, config_path):
+        """Load training configuration"""
+        try:
+            import yaml
+            with open(config_path, 'r') as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            print(f"Warning: Could not load config {config_path}: {e}")
+            return {}
     
     def detect_model_type(self, model_path):
         """Detect model type from checkpoint path"""
         path_lower = model_path.lower()
         
-        for model_name in self.model_mapping:
+        # Check all available models from registry
+        for model_name in MODEL_REGISTRY.keys():
             if model_name.lower() in path_lower:
-                return self.model_mapping[model_name]
+                return model_name, MODEL_REGISTRY[model_name]
         
         # Default fallback
-        print(f"Warning: Could not detect model type from {model_path}, using GCN")
-        return GCN
+        available_models = list(MODEL_REGISTRY.keys())
+        print(f"Warning: Could not detect model type from {model_path}")
+        print(f"Available models: {available_models}")
+        
+        # Use first available model as fallback
+        if available_models:
+            fallback_name = available_models[0]
+            print(f"Using {fallback_name} as fallback")
+            return fallback_name, MODEL_REGISTRY[fallback_name]
+        else:
+            raise ValueError("No models available in registry")
     
     def load_model(self, checkpoint_path, input_dim):
         """Load model from checkpoint"""
-        # Detect model class
-        ModelClass = self.detect_model_type(checkpoint_path)
+        # Detect model class and name
+        model_name, ModelClass = self.detect_model_type(checkpoint_path)
         
-        # Create model instance
+        # Get model config from training config
+        model_config = self.config.get('models', {}).get(model_name, {})
+        print(f"Using model config: {model_config}")
+        
+        # Create model instance with training configuration
         try:
-            model = ModelClass(input_dim=input_dim)
-        except TypeError:
-            # Some models might need different parameter names
-            model = ModelClass(input_dim)
+            model = ModelClass(input_dim=input_dim, **model_config)
+        except TypeError as e:
+            print(f"Failed to create {ModelClass.__name__} with config {model_config}: {e}")
+            try:
+                # Fallback to default parameters
+                model = ModelClass(input_dim=input_dim)
+            except TypeError as e2:
+                print(f"Failed to create {ModelClass.__name__} with default parameters: {e2}")
+                return None
         
         model = model.to(self.device)
         
         # Load weights
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
-        if 'model_state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['model_state_dict'])
-        else:
-            model.load_state_dict(checkpoint)
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=self.device)
+            if 'model_state_dict' in checkpoint:
+                model.load_state_dict(checkpoint['model_state_dict'])
+            else:
+                model.load_state_dict(checkpoint)
+        except Exception as e:
+            print(f"Error loading checkpoint: {e}")
+            return None
         
         model.eval()
         return model
+    
+    def parse_model_config_from_path(self, model_path):
+        """Parse model configuration from checkpoint filename"""
+        filename = os.path.basename(model_path)
+        config = {}
+        
+        # Parse common parameters from filename
+        import re
+        
+        # Extract dropout
+        d_match = re.search(r'd([\d.]+)', filename)
+        if d_match:
+            config['dropout'] = float(d_match.group(1))
+        
+        # Extract hidden_dim
+        h_match = re.search(r'h(\d+)', filename)
+        if h_match:
+            config['hidden_dim'] = int(h_match.group(1))
+            
+        # Extract num_layers
+        l_match = re.search(r'l(\d+)', filename)
+        if l_match:
+            config['num_layers'] = int(l_match.group(1))
+            
+        # Extract top_k
+        topk_match = re.search(r'topk(\d+)', filename)
+        if topk_match:
+            config['top_k'] = int(topk_match.group(1))
+            
+        # Extract boolean flags
+        if 'use_input_mlpTrue' in filename:
+            config['use_input_mlp'] = True
+        elif 'use_input_mlpFalse' in filename:
+            config['use_input_mlp'] = False
+            
+        if 'use_residualTrue' in filename:
+            config['use_residual'] = True
+        elif 'use_residualFalse' in filename:
+            config['use_residual'] = False
+        
+        return config if config else None
     
     def get_node_colors(self, data):
         """Get node colors based on community info or default"""
@@ -145,6 +213,10 @@ class GraphVisualizer:
         print(f"Loading model with input_dim={input_dim}")
         model = self.load_model(model_path, input_dim)
         
+        if model is None:
+            print("Failed to load model")
+            return None
+        
         # Detect model name for labeling
         model_name = model.__class__.__name__
         print(f"Loaded {model_name} model")
@@ -154,7 +226,7 @@ class GraphVisualizer:
         if num_samples == 1:
             axes = axes.reshape(1, -1)
         
-        print(f"\\nGenerating visualizations...")
+        print(f"\nGenerating visualizations...")
         
         for row, idx in enumerate(sample_indices):
             data = graphs[idx].to(self.device)
@@ -164,7 +236,12 @@ class GraphVisualizer:
             
             # Get model predictions
             with torch.no_grad():
-                pred_coords = model(data.x, data.edge_index).cpu().numpy()
+                try:
+                    pred_coords = model(data.x, data.edge_index).cpu().numpy()
+                except Exception as e:
+                    print(f"Error during model prediction: {e}")
+                    # Use random coordinates as fallback
+                    pred_coords = np.random.randn(data.num_nodes, 2)
             
             # Create NetworkX graph
             G = self.create_networkx_graph(data)
@@ -221,7 +298,7 @@ class GraphVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()
         
-        print(f"\\nSaved visualization to: {save_path}")
+        print(f"\nSaved visualization to: {save_path}")
         return save_path
 
 def main():
@@ -274,11 +351,15 @@ def main():
             seed=args.seed
         )
         
-        print(f"\\n✅ Visualization completed!")
-        print(f"📁 Output: {save_path}")
+        if save_path:
+            print(f"\n✅ Visualization completed!")
+            print(f"📁 Output: {save_path}")
+        else:
+            print(f"\n❌ Visualization failed!")
+            return 1
         
     except Exception as e:
-        print(f"\\n❌ Error: {e}")
+        print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
         return 1

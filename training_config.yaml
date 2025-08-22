@@ -5,7 +5,7 @@ force_directed:
   epochs: 1000
   weight_decay: 0.01
   min_epochs: 100
-  max_patience: 50
+  max_patience: 30
 
 circular:
   lr: 0.003
@@ -17,48 +17,50 @@ circular:
 
 # Model-specific configurations
 models:
-  # Standard PyG models
+  # Baseline models
   GCN:
     hidden_dim: 64
     num_layers: 3
     dropout: 0.1
+    use_residual: true
+    use_input_mlp: true
     
   GAT:
     hidden_dim: 64
     num_layers: 3
     heads: 4
     dropout: 0.1
+    use_residual: true
+    use_input_mlp: true
     
-  GraphSAGE:
+  GIN:
     hidden_dim: 64
     num_layers: 3
     dropout: 0.1
-  
-  # Custom models (if available)
-  CustomGCN:
-    hidden_channels: 64
-    dropout_rate: 0.1
+    use_residual: true
+    use_input_mlp: true
     
-  CustomGAT:
-    hidden_channels: 64
-    num_layers: 3
-    heads: 4
-    dropout: 0.1
-    
-  CustomGIN:
-    hidden_channels: 64
-    num_layers: 3
-    dropout: 0.1
-    
-  CustomChebConv:
-    hidden_channels: 64
-    num_layers: 3
+  ChebNet:
+    hidden_dim: 64
+    num_layers: 2
     K: 3
     dropout: 0.1
+    use_residual: true
+    use_input_mlp: true
   
-  ForceGNN:
+  # Spring layout models
+  SimpleSpringGNN:
     hidden_dim: 64
-    num_layers: 4
+    dropout: 0.1
+    
+  MultiScaleSpringGNN:
+    hidden_dim: 64
+    top_k: 16
+    dropout: 0.1
+    
+  AntiSmoothingSpringGNN:
+    hidden_dim: 64
+    dropout: 0.1
 
 # Data configuration
 data:

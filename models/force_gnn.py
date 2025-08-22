@@ -87,3 +87,4 @@ class ForceGNN(nn.Module):
         # Final layer
         coords = self.layers[-1](h, edge_index)
         return coords
+    

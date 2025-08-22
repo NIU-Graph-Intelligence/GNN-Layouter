@@ -19,113 +19,9 @@ from training.trainer import Trainer
 from training.evaluation import evaluate_model, compute_metrics
 from config_utils import load_training_config
 
-# PyTorch Geometric standard models
-from torch_geometric.nn import GCNConv, GATConv, GINConv, ChebConv, SAGEConv
-import torch.nn as nn
-import torch.nn.functional as F
+# Import models from unified registry
+from models.registry import MODEL_REGISTRY, get_available_models, get_model_class
 
-# Custom models (cleaned versions)
-CUSTOM_MODELS = {}
-try:
-    from models.GCN import GCN
-    CUSTOM_MODELS['CustomGCN'] = GCN
-except ImportError:
-    pass
-
-try:
-    from models.GAT import GAT
-    CUSTOM_MODELS['CustomGAT'] = GAT
-except ImportError:
-    pass
-
-try:
-    from models.GIN import GIN
-    CUSTOM_MODELS['CustomGIN'] = GIN
-except ImportError:
-    pass
-
-try:
-    from models.ChebConv import ChebNet
-    CUSTOM_MODELS['CustomChebNet'] = ChebNet
-except ImportError:
-    pass
-
-try:
-    from models.GCNFR import ForceGNN
-    CUSTOM_MODELS['ForceGNN'] = ForceGNN
-except ImportError:
-    pass
-
-# Standard PyG models
-class StandardGCN(nn.Module):
-    def __init__(self, input_dim, hidden_dim=64, num_layers=3, dropout=0.1):
-        super().__init__()
-        self.dropout = dropout
-        
-        self.convs = nn.ModuleList()
-        self.convs.append(GCNConv(input_dim, hidden_dim))
-        for _ in range(num_layers - 2):
-            self.convs.append(GCNConv(hidden_dim, hidden_dim))
-        self.convs.append(GCNConv(hidden_dim, 2))  # Output 2D coordinates
-        
-    def forward(self, x, edge_index):
-        for i, conv in enumerate(self.convs[:-1]):
-            x = conv(x, edge_index)
-            x = F.relu(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.convs[-1](x, edge_index)
-        return x
-
-class StandardGAT(nn.Module):
-    def __init__(self, input_dim, hidden_dim=64, num_layers=3, heads=4, dropout=0.1):
-        super().__init__()
-        self.dropout = dropout
-        
-        self.convs = nn.ModuleList()
-        self.convs.append(GATConv(input_dim, hidden_dim, heads=heads, dropout=dropout))
-        
-        for _ in range(num_layers - 2):
-            self.convs.append(GATConv(hidden_dim * heads, hidden_dim, heads=heads, dropout=dropout))
-        
-        self.convs.append(GATConv(hidden_dim * heads, 2, heads=1, dropout=dropout))
-        
-    def forward(self, x, edge_index):
-        for i, conv in enumerate(self.convs[:-1]):
-            x = conv(x, edge_index)
-            x = F.relu(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.convs[-1](x, edge_index)
-        return x
-
-class StandardSAGE(nn.Module):
-    def __init__(self, input_dim, hidden_dim=64, num_layers=3, dropout=0.1):
-        super().__init__()
-        self.dropout = dropout
-        
-        self.convs = nn.ModuleList()
-        self.convs.append(SAGEConv(input_dim, hidden_dim))
-        for _ in range(num_layers - 2):
-            self.convs.append(SAGEConv(hidden_dim, hidden_dim))
-        self.convs.append(SAGEConv(hidden_dim, 2))
-        
-    def forward(self, x, edge_index):
-        for i, conv in enumerate(self.convs[:-1]):
-            x = conv(x, edge_index)
-            x = F.relu(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.convs[-1](x, edge_index)
-        return x
-
-# Combined model registry
-MODEL_CLASSES = {
-    # Standard PyG models
-    'GCN': StandardGCN,
-    'GAT': StandardGAT,
-    'GraphSAGE': StandardSAGE,
-    
-    # Custom models (if available)
-    **CUSTOM_MODELS
-}
 
 def get_config_string_from_yaml(model_name, model_config):
     """
@@ -155,7 +51,8 @@ def get_config_string_from_yaml(model_name, model_config):
             'learning_rate': 'lr',
             'batch_size': 'bs',
             'epochs': 'ep',
-            'K': 'k'
+            'K': 'k',
+            'top_k': 'topk'
         }.get(param, param)
         
         # Format float values to avoid overly long decimals
@@ -173,9 +70,7 @@ def parse_args():
     
     # Required arguments
     parser.add_argument('--model', type=str, required=True, 
-                       help='Model architecture to use (use --list-models to see available models)')
-    parser.add_argument('--list-models', action='store_true',
-                       help='List all available models and exit')
+                       help='Model architecture to use')
     parser.add_argument('--layout_type', type=str, required=True,
                        choices=['circular', 'force_directed'],
                        help='Type of layout to train')
@@ -217,17 +112,19 @@ def setup_device(device_arg: str) -> torch.device:
 
 def create_model(model_name: str, input_dim: int, config: dict) -> torch.nn.Module:
     """Create model instance"""
-    if model_name not in MODEL_CLASSES:
-        available_models = list(MODEL_CLASSES.keys())
+    try:
+        model_class = get_model_class(model_name)
+    except ValueError as e:
+        available_models = get_available_models()
         raise ValueError(f"Unknown model: {model_name}. Available models: {available_models}")
     
-    model_class = MODEL_CLASSES[model_name]
     model_config = config.get('models', {}).get(model_name, {})
     
-    # Special handling for ForceGNN - remove batch and init_coords parameters
-    if model_name == 'ForceGNN':
-        print("Note: ForceGNN will use standard (x, edge_index) interface")
-        print("Initial coordinates should be included in the feature matrix x")
+    # Special handling for spring layout models that may need initial coordinates
+    spring_models = ['MultiScaleSpringGNN']
+    if model_name in spring_models:
+        print(f"Note: {model_name} expects initial coordinates in the input")
+        print("Make sure your dataset includes initial coordinates in the feature matrix")
     
     # Create model with configuration
     try:
@@ -247,19 +144,6 @@ def create_model(model_name: str, input_dim: int, config: dict) -> torch.nn.Modu
 
 def main():
     args = parse_args()
-    
-    # Handle --list-models
-    if args.list_models:
-        print("Available models:")
-        print("\nStandard PyG models:")
-        for name in ['GCN', 'GAT', 'GraphSAGE']:
-            if name in MODEL_CLASSES:
-                print(f"  {name}")
-        
-        print("\nCustom models:")
-        for name in CUSTOM_MODELS:
-            print(f"  {name}")
-        return 0
     
     # Set random seed
     torch.manual_seed(args.seed)
@@ -404,6 +288,17 @@ def main():
         
         print(f"Results saved to: {results_path}")
         print(f"Human-readable results saved to: {json_path}")
+        
+        print(f"Results saved to: {results_path}")
+        print(f"Human-readable results saved to: {json_path}")
+        
+        # Generate visualization command
+        print("\n" + "="*60)
+        print("🎨 To visualize the trained model, run:")
+        print("="*60)
+        viz_command = f"python visualize.py --model_path {checkpoint_path} --data_path {args.data_path}"
+        print(viz_command)
+        print("="*60)
         
     else:
         print("Training failed!")

@@ -90,7 +90,7 @@ def create_node_features(graph_idx: int, num_nodes: int, edge_index: torch.Tenso
     """Create node features based on configuration"""
     features = []
     
-    # Node-level features
+    # Node-level features (excluding initial_position, which goes at the end)
     if feature_config.get('degree', False):
         row, _ = edge_index
         deg = degree(row, num_nodes=num_nodes, dtype=torch.float32).unsqueeze(1)
@@ -103,10 +103,6 @@ def create_node_features(graph_idx: int, num_nodes: int, edge_index: torch.Tenso
     if feature_config.get('onehot', False):
         # Check if all graphs have same number of nodes would be done at dataset level
         features.append(torch.eye(num_nodes))
-    
-    if feature_config.get('initial_position', False) and initial_coords is not None:
-        init_pos_feat = torch.from_numpy(initial_coords).float()
-        features.append(init_pos_feat)
     
     if feature_config.get('random', False):
         random_feat = torch.randn(num_nodes, 2)
@@ -133,6 +129,11 @@ def create_node_features(graph_idx: int, num_nodes: int, edge_index: torch.Tenso
             if feature_config.get('clustering_coefficient_norm', False):
                 clustering_norm_feat = graph_level_features['clustering_coefficient_norm'][graph_idx].unsqueeze(0).repeat(num_nodes, 1)
                 features.append(clustering_norm_feat)
+    
+    # Always add initial_position at the end if available
+    if feature_config.get('initial_position', False) and initial_coords is not None:
+        init_pos_feat = torch.from_numpy(initial_coords).float()
+        features.append(init_pos_feat)
     
     if not features:
         # Default to degree features if nothing specified
@@ -204,7 +205,7 @@ def process_graph_layout_pair(graph_idx: int, graph: nx.Graph, layout_data: Dict
         if feature_config.get('initial_position', False) and initial_coords is None:
             raise ValueError(f"initial_position feature requested but not available for graph {graph_id}")
         
-        # Create features
+        # Create features (initial_position will be at the end if included)
         x = create_node_features(graph_idx, num_nodes, edge_index, feature_config, 
                                initial_coords, graph_level_features)
         
@@ -220,6 +221,11 @@ def process_graph_layout_pair(graph_idx: int, graph: nx.Graph, layout_data: Dict
         
         # Add original coordinates
         data.original_y = torch.from_numpy(coordinates).float()
+        
+        # Store feature configuration for reference
+        data.has_initial_position = feature_config.get('initial_position', False)
+        if data.has_initial_position:
+            data.initial_position_dims = (x.size(1) - 2, x.size(1))  # Last 2 dimensions
         
         # Add community information for visualization (but not as features)
         if 'community' in graph.nodes[0]:  # Check if community info exists
@@ -275,6 +281,10 @@ def create_dataset_from_config(dataset_config: Dict[str, Any],
     
     print(f"Creating dataset '{dataset_name}' with {layout_type} layout")
     print(f"Enabled features: {[k for k, v in feature_config.items() if v]}")
+    
+    # Special note about initial_position feature placement
+    if feature_config.get('initial_position', False):
+        print("Note: initial_position feature will be placed at the end of feature matrix (last 2 dimensions)")
     
     # Find matching graph files
     graphs_dir = config_manager.get_path('graphs')
@@ -376,6 +386,7 @@ def _print_dataset_statistics(dataset: List[Data]):
     graph_types = {}
     layout_types = {}
     community_count = 0
+    initial_position_count = 0
     
     for data in dataset:
         gt = getattr(data, 'graph_type', 'unknown')
@@ -384,11 +395,18 @@ def _print_dataset_statistics(dataset: List[Data]):
         layout_types[lt] = layout_types.get(lt, 0) + 1
         if hasattr(data, 'community'):
             community_count += 1
+        if getattr(data, 'has_initial_position', False):
+            initial_position_count += 1
     
     print(f"  Graph types: {dict(graph_types)}")
     print(f"  Layout types: {dict(layout_types)}")
     print(f"  Graphs with community info: {community_count}")
+    print(f"  Graphs with initial_position feature: {initial_position_count}")
     print(f"  Feature dimensions: {dataset[0].x.shape[1]}")
+    
+    if initial_position_count > 0:
+        sample_data = next(data for data in dataset if getattr(data, 'has_initial_position', False))
+        print(f"  Initial position dimensions: {sample_data.initial_position_dims}")
     
     # Graph size statistics
     node_counts = [data.num_nodes for data in dataset]

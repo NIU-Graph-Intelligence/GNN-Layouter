@@ -1,34 +1,35 @@
 """Graph neural network models for layout tasks."""
 
-# Import models with fallback handling
 __all__ = []
 
+# Try to import baseline models
 try:
-    from .GCN import GCN
-    __all__.append('GCN')
-except ImportError:
-    pass
+    from .baseline import GCN, GAT, GIN, ChebNet
+    __all__.extend(['GCN', 'GAT', 'GIN', 'ChebNet'])
+    print("Successfully imported baseline models")
+except ImportError as e:
+    print(f"Failed to import baseline models: {e}")
+
+# Try to import spring layout models
+try:
+    from .simple_spring_gnn import SimpleSpringGNN
+    __all__.append('SimpleSpringGNN')
+    print("Successfully imported SimpleSpringGNN")
+except ImportError as e:
+    print(f"Failed to import SimpleSpringGNN: {e}")
 
 try:
-    from .GAT import GAT
-    __all__.append('GAT')
-except ImportError:
-    pass
+    from .multiscale_spring_gnn import MultiScaleSpringGNN
+    __all__.append('MultiScaleSpringGNN')
+    print("Successfully imported MultiScaleSpringGNN")
+except ImportError as e:
+    print(f"Failed to import MultiScaleSpringGNN: {e}")
 
 try:
-    from .GIN import GIN
-    __all__.append('GIN')
-except ImportError:
-    pass
+    from .antismoothing_spring_gnn import AntiSmoothingSpringGNN
+    __all__.append('AntiSmoothingSpringGNN')
+    print("Successfully imported AntiSmoothingSpringGNN")
+except ImportError as e:
+    print(f"Failed to import AntiSmoothingSpringGNN: {e}")
 
-try:
-    from .ChebConv import ChebNet
-    __all__.append('ChebNet')
-except ImportError:
-    pass
-
-try:
-    from .GCNFR import ForceGNN
-    __all__.append('ForceGNN')
-except ImportError:
-    pass
+print(f"Available models: {__all__}")
