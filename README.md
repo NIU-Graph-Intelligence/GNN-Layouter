@@ -1,148 +1,113 @@
-# GNN-Layouter
+# GNN‑Layouter
 
-A comprehensive Graph Neural Network (GNN) based framework for generating and optimizing graph layouts, supporting multiple layout algorithms including Force-Directed and Circular layouts with advanced deep learning architectures.
+ Learn graph layouts (circular and force‑directed / spring) with Graph Neural Networks over synthetic and community graph dataset.
 
-## 🚀 Features
 
-### **Graph Neural Network Models**
-- **ForceGNN**: Specialized GNN for force-directed layout generation with physics-inspired loss functions
-- **ChebConv**: Chebyshev spectral graph convolution networks for efficient graph processing
-- **GAT (Graph Attention Networks)**: Attention-based models for layout generation with node importance
-- **GIN (Graph Isomorphism Networks)**: Powerful graph neural networks with theoretical guarantees
-- **GCN (Graph Convolutional Networks)**: Classic graph convolution for baseline comparisons
 
-### **Layout Algorithms**
-- **Force-Directed Layouts**: 
-  - Fruchterman-Reingold (FR) algorithm
-  - ForceAtlas2 (FA2) algorithm
-- **Circular Layouts**: Traditional circular arrangement for comparison
 
-### **Advanced Features**
-- **Centralized Configuration Management**: Single `config.json` for all parameters
-- **Modular Architecture**: Flexible and extensible codebase design
-- **Multiple Optimizers**: Adam, SGD, and custom optimization strategies
-- **Comprehensive Evaluation**: MSE, visualization, and layout quality metrics
-- **Batch Processing**: Efficient handling of large graph datasets
+---
 
-## 📁 Project Structure
+## Table of Contents
+1. [Motivation](#motivation)
+2. [Key Features](#key-features)
+3. [Repository Layout](#repository-layout)
+4. [Installation](#installation)
+5. [Quick Start](#quick-start)
+6. [Models](#models)
+7. [Training](#training)
+8. [Visualization](#visualization)
 
+## Motivation
+This project explores whether a GNN can infer spatial embeddings directly from graph topology, reducing iterative physics cost and enabling layout generalization across graph families.
+
+## Key Features
+* Unified YAML‑driven data pipeline (graphs ➜ layouts ➜ datasets)
+* Multiple synthetic graph generators: ER, BA, WS, plus LFR community graphs
+* Rich, opt‑in feature engineering (node + graph features)
+* Spring layout models supporting optional initial position conditioning
+* Deterministic generation via seeded sampling
+* Lightweight trainer with early stopping & metric export
+
+Commands:
 ```
-GNN-Layouter/
-├── config.json                          # Centralized configuration file
-├── config_utils/                        # Configuration management
-│   ├── config_manager.py                # Configuration loading and access
-│   └── visualization.py                 # Unified visualization tools
-├── data/                                # Data handling and preprocessing
-│   ├── dataset.py                       # Dataset loaders and utilities
-│   ├── generate_graphs.py               # Graph generation scripts
-│   ├── generate_layouts.py              # Layout generation utilities
-│   └── preprocess_data.py               # Data preprocessing pipelines
-├── models/                              # Neural network architectures
-│   ├── ChebConv.py                      # Chebyshev convolution models
-│   ├── GAT.py                           # Graph Attention Networks
-│   ├── GIN.py                           # Graph Isomorphism Networks
-│   ├── GCN.py                           # Graph Convolutional Networks
-│   ├── GCNFR.py                         # Force-directed GNN (ForceGNN)
-│   ├── mlp_layers.py                    # Modular MLP components
-│   └── coordinate_layers.py             # Coordinate transformation layers
-├── training/                            # Training and evaluation
-│   ├── train.py                         # Main training script
-│   ├── trainer.py                       # Training pipeline classes
-│   └── Eval_MSE.py                      # Model evaluation and metrics
-|   └── evaluation.py                    # Loss Function and loader
-├── results/                             # Training results and outputs
-├── requirements.txt                     # Python dependencies
-└── *.sh                                 # Shell scripts for automation
+python data/generate_graphs.py  --config <exp>
+python data/generate_layouts.py --config <exp>
+python data/generate_dataset.py --config <exp>
+python train.py --model GCN --layout_type circular --data_path data/processed/<file>.pt
 ```
 
-## 🛠️ Setup and Installation
-
-### **Prerequisites**
-
-
+## Repository Layout
 ```
-sudo apt update
-sudo apt install python3.10 python3.10-venv python3.10-dev python3.10-distutils
+configs/                Experiment YAMLs (graphs, layouts, datasets)
+config.yaml             Global paths & defaults
+training_config.yaml    Hyperparameters + per‑model settings
+data/
+  generate_graphs.py    Graph family generation (timestamped bundles)
+  generate_layouts.py   Circular or spring (optional initial positions)
+  generate_dataset.py   Assemble PyG Data list with selected features
+  dataset.py            Load + split utilities
+models/                 All architectures + registry
+training/               Trainer, losses, evaluation helpers
+visualize.py            Ground truth vs prediction comparison
+results/                Checkpoints, metrics, plots
 ```
 
-
-### **1. Clone the Repository**
-```bash
-git clone https://github.com/NIU-Graph-Intelligence/GNN-Layouter.git
-cd GNN-Layouter
+## Installation
 ```
-
-### **2. Create Virtual Environment (Recommended)**
-```bash
-python3.10 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
-```
-
-### **3. Install Dependencies**
-```bash
-pip install --upgrade pip
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  # adjust if needed
 pip install -r requirements.txt
-
+pip install pyyaml  # ensure present
 ```
 
-
-## ⚙️ Configuration
-
-The project uses a centralized configuration system through `config.json`. All model parameters, training settings, and paths are managed from this single file.
-
-
-## 🚀 Usage
-
-### **1. Data Generation**
-
-Generate synthetic graph datasets with various properties:
-
+## Quick Start
 ```bash
-# Generate graphs with different models (ER, WS, BA)
-python data/generate_graphs.py --num_samples 1000 --num_nodes 40
+# 1. Generate community graphs
+python data/generate_graphs.py --config community_only
 
-# Generate layouts for existing graphs
-python data/generate_layouts.py --dataset data/processed/graphs.pkl
+# 2. Generate spring layouts
+python data/generate_layouts.py --config community_only
+
+# 3. Build dataset
+python data/generate_dataset.py --config community_only
+
+# 4. Train a spring (force) layout model
+python train.py --model ForceGNN --layout_type force_directed --data_path data/processed/community_5k_force_directed.pt
+
+# 5. Visualize
+python visualize.py --model_path results/force_directed/ForceGNN/..._best.pt --data_path data/processed/community_5k_force_directed.pt
 ```
 
-### **2. Training Models**
 
-#### **Basic Training**
+
+## Models
+Registered (see `models/registry.py`):
+* Baseline: `GCN`, `GAT`, `GIN`, `ChebNet`
+* Spring‑aware: `SimpleSpringGNN`, `MultiScaleSpringGNN`, `AntiSmoothingSpringGNN`, `ForceGNN`
+
+Add a model: implement class and register in `MODEL_REGISTRY`.
+
+## Training
 ```bash
-# Train ForceGNN model on force-directed layouts
-python training/train.py --model ForceGNN --layout_type force_directed
+python train.py \
+  --model GCN \
+  --layout_type circular \
+  --data_path data/processed/random_graphs_3k_circular.pt
 
-# Train GAT model on circular layouts  
-python training/train.py --model GAT --layout_type circular
-
-# Train with custom parameters (overrides config defaults)
-python training/train.py --model ChebConv --batch_size 128 --learning_rate 0.001
+python train.py \
+  --model ForceGNN \
+  --layout_type force_directed \
+  --data_path data/processed/community_5k_force_directed.pt
 ```
 
-### **3. Model Evaluation**
-
+## Visualization
 ```bash
-# Evaluate all trained models
-python training/Eval_MSE.py
-
-# Evaluate specific model
-python training/Eval_MSE.py --model ForceGNN --layout_type force_directed
-
-# Generate evaluation visualizations
-python training/Eval_MSE.py --visualize --output_dir results/eval/
+python visualize.py \
+  --model_path results/force_directed/ForceGNN/..._best.pt \
+  --data_path data/processed/community_5k_force_directed.pt
 ```
+Outputs side‑by‑side predicted vs ground truth.
 
-### **4. Visualization**
 
-```bash
-# Generate layout visualizations
-python config_utils/visualization.py --model ForceGNN --num_samples 10
-
-# Compare multiple models
-python config_utils/visualization.py --compare --models ForceGNN GAT ChebConv
-
-# Create training progress plots
-python config_utils/visualization.py --plot_training --model_path results/training/
-```
 
