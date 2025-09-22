@@ -61,6 +61,10 @@ models:
   AntiSmoothingSpringGNN:
     hidden_dim: 64
     dropout: 0.1
+    
+  ForceGNN:
+    hidden_dim: 64
+    dropout: 0.1
 
 # Data configuration
 data:

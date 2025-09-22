@@ -170,6 +170,7 @@ def main():
     
     # Get layout configurations
     layout_configs = experiment_config.get('layouts', [])
+    print(layout_configs)
     if not layout_configs:
         print("No layout configurations found in experiment config")
         return

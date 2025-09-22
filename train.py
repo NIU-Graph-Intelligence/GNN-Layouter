@@ -289,9 +289,6 @@ def main():
         print(f"Results saved to: {results_path}")
         print(f"Human-readable results saved to: {json_path}")
         
-        print(f"Results saved to: {results_path}")
-        print(f"Human-readable results saved to: {json_path}")
-        
         # Generate visualization command
         print("\n" + "="*60)
         print("🎨 To visualize the trained model, run:")

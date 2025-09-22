@@ -439,6 +439,8 @@ def main():
     
     # Get dataset configurations
     dataset_configs = experiment_config.get('datasets', [])
+    print("tanish")
+    print(dataset_configs)
     if not dataset_configs:
         print("No dataset configurations found in experiment config")
         return

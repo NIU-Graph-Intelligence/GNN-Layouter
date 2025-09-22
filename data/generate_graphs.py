@@ -40,29 +40,6 @@ def parse_node_range(num_nodes_config: Union[int, str, Dict[str, int]]) -> tuple
     else:
         raise ValueError(f"Invalid num_nodes format: {num_nodes_config}")
 
-def parse_range_config(config: Union[int, str, Dict[str, int]]) -> tuple:
-    """
-    Generic range parsing function for any parameter
-    
-    Args:
-        config: Can be int, string range, or dict with min/max
-        
-    Returns:
-        tuple: (min_val, max_val)
-    """
-    if isinstance(config, int):
-        return config, config
-    elif isinstance(config, str):
-        if "-" in config:
-            min_val, max_val = map(int, config.split("-"))
-            return min_val, max_val
-        else:
-            val = int(config)
-            return val, val
-    elif isinstance(config, dict):
-        return config["min"], config["max"]
-    else:
-        raise ValueError(f"Invalid range format: {config}")
 
 def sample_num_nodes(min_nodes: int, max_nodes: int, seed: int = None) -> int:
     """Sample number of nodes from range"""
