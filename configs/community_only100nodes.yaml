@@ -4,10 +4,10 @@ graphs:
   # 5000 community graphs with your specific requirements
   - type: "Community"
     num_graphs: 5000
-    num_nodes: 20-50
+    num_nodes: 80-100
     params:
       # LFR parameters configured for your requirements
-      avg_degree: 4.5          # Average degree range (k parameter)
+      avg_degree: 6          # Average degree range (k parameter)
       max_degree: 10            # Maximum degree (maxk parameter)
       mixing_parameter: 0.1     # Topology mixing parameter (mut)
       weight_mixing: 0.0        # Weight mixing parameter (muw) - 0 for unweighted
@@ -19,7 +19,7 @@ graphs:
       
       # Community size constraints to achieve ~2-12 communities for 20-50 nodes
       min_community_size: 4     # Minimum community size (minc)
-      max_community_size: 12    # Maximum community size (maxc) - allows multiple communities
+      max_community_size: 4    # Maximum community size (maxc) - allows multiple communities
       
       # No overlapping communities
       overlapping_nodes: 0      # Number of overlapping nodes (on)
@@ -30,22 +30,21 @@ graphs:
       keep_failed_attempts: false  # Whether to keep temp files for failed generations
       temp_root: "temp_lfr"
       seed: 12345
-    output_prefix: "comm_5k"
+    output_prefix: "comm_5k100nodes"
 
 layouts:
   # Force-directed layout
   - type: "spring"
     params:
-      iterations: 50
+      iterations: 100
       seed: 42
-      scale: null
-    apply_to: ["comm_5k_5000graphs_20-50nodes_"]
+    apply_to: ["comm_5k100nodes"]
     save_initial: true
 
 datasets:
   # Dataset with all 5000 community graphs - updated feature configuration
-  - name: "community_5k_Nodes20-50_force_directed"
-    graph_patterns: ["comm_5k_5000graphs_20-50nodes_*"]
+  - name: "community_5k100nodes_force_directed"
+    graph_patterns: ["comm_5k100nodes*"]
     layout_type: "spring"
     features:
       # Node-level features

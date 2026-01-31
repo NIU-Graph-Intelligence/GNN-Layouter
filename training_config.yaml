@@ -5,7 +5,7 @@ force_directed:
   epochs: 1000
   weight_decay: 0.01
   min_epochs: 100
-  max_patience: 30
+  max_patience: 100
 
 circular:
   lr: 0.003
@@ -65,6 +65,11 @@ models:
   ForceGNN:
     hidden_dim: 64
     dropout: 0.1
+
+  FROneIterReplicator:
+    learn_step: true # gives us a trainable scalar 
+    use_residual: false # gives us a tiny MLP to learn corrections
+    residual_h: 9 
 
 # Data configuration
 data:
