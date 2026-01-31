@@ -1,208 +1,394 @@
+# data/generate_graphs.py
 import argparse
-import os
-import pickle
-import random
 import networkx as nx
-import torch
-from torch_geometric.utils import from_networkx
-from torch_geometric.data import Data
 import numpy as np
+import pickle
+import os
 import sys
+import random
+from datetime import datetime
+from typing import List, Dict, Any, Union
+
+# Add parent directory to path for importing config_utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config_utils.config_manager import ConfigManager
+from config_utils import ConfigManager, load_experiment_config
 
-def assign_communities(G, num_communities):
-    """Assign community labels to nodes using network structure"""
-    # Use NetworkX's community detection
-    try:
-        from community import community_louvain
-        communities = community_louvain.best_partition(G)
-        # Remap community IDs to be 1-based like in the dataset
-        unique_comms = sorted(set(communities.values()))
-        comm_map = {old: new + 1 for new, old in enumerate(unique_comms)}
-        communities = {node: comm_map[comm] for node, comm in communities.items()}
-    except ImportError:
-        # Fallback: random assignment if community detection package not available
-        communities = {node: random.randint(1, num_communities) for node in G.nodes()}
-    return communities
-
-def convert_to_pyg_data(G, graph_id, add_communities=False):
-    """Convert NetworkX graph to PyG Data object with same attributes as community dataset"""
-    # Create node features (node indices as features)
-    num_nodes = G.number_of_nodes()
-    x = torch.arange(num_nodes, dtype=torch.float).view(-1, 1)  # [num_nodes, 1] feature with indices
-    
-    # Create edge list and edge weights
-    edges = list(G.edges())
-    
-    # Create edge_index with both directions [2, num_edges*2]
-    edge_index = torch.tensor([[u, v] for u, v in edges] + [[v, u] for u, v in edges], dtype=torch.long).t()
-    
-    # Create edge weights (1.0) for both directions [num_edges*2, 1]
-    edge_attr = torch.ones(len(edges) * 2, dtype=torch.float).view(-1, 1)
-    
-    # Create PyG Data object
-    data = Data(
-        x=x,
-        edge_index=edge_index,
-        edge_attr=edge_attr,
-        num_nodes=num_nodes,
-        graph_id=graph_id
-    )
-    
-    # Add community information if requested
-    if add_communities:
-        communities_dict = assign_communities(G, num_communities=3)  # Default to 3 communities
-        
-        # Convert to tensor format (node index -> community id)
-        community_tensor = torch.zeros(num_nodes, dtype=torch.long)
-        for node, comm in communities_dict.items():
-            community_tensor[node] = comm
-        
-        data.community = community_tensor
-        data.num_communities = torch.tensor(len(set(communities_dict.values())))
-    
-    return data
-
-def generate_graphs(num_samples, num_nodes, graph_types, save_path, community_dataset_path=None, add_communities_to_generated=False):
-    """Generate a mix of specified graph types (BA, ER, WS) and combine with community dataset
+def parse_node_range(num_nodes_config: Union[int, str, Dict[str, int]]) -> tuple:
+    """
+    Parse node range configuration
     
     Args:
-        num_samples: Total number of graphs to generate
-        num_nodes: Number of nodes in each graph
-        graph_types: List of graph types to generate ('BA', 'ER', 'WS')
-        save_path: Path to save the generated graphs
-        community_dataset_path: Path to community dataset (if None, uses config)
-        add_communities_to_generated: Whether to add community detection to generated graphs
-    """
-    config = ConfigManager()
+        num_nodes_config: Can be:
+            - int: fixed number of nodes
+            - str: range like "50-100" 
+            - dict: {"min": 50, "max": 100}
     
-    # Use config path if not provided
-    if community_dataset_path is None:
-        community_dataset_path = os.path.join(
-            config.get_data_path('graphs'), 
-            'deepdrawingReproducecommunity_graphs_dataset.pkl'
-        )
-        save_path: Path to save the generated graphs
-        community_dataset_path: Path to the existing community dataset
+    Returns:
+        tuple: (min_nodes, max_nodes)
     """
+    if isinstance(num_nodes_config, int):
+        return num_nodes_config, num_nodes_config
+    elif isinstance(num_nodes_config, str):
+        if "-" in num_nodes_config:
+            min_val, max_val = map(int, num_nodes_config.split("-"))
+            return min_val, max_val
+        else:
+            val = int(num_nodes_config)
+            return val, val
+    elif isinstance(num_nodes_config, dict):
+        return num_nodes_config["min"], num_nodes_config["max"]
+    else:
+        raise ValueError(f"Invalid num_nodes format: {num_nodes_config}")
+
+
+def sample_num_nodes(min_nodes: int, max_nodes: int, seed: int = None) -> int:
+    """Sample number of nodes from range"""
+    if seed is not None:
+        random.seed(seed)
+    return random.randint(min_nodes, max_nodes)
+
+def generate_er_graphs(num_graphs: int, num_nodes_config: Union[int, str, Dict], 
+                      p: float = 0.1, seed: int = 42) -> List[nx.Graph]:
+    """Generate Erdős-Rényi graphs with variable node counts"""
     graphs = []
-    samples_per_type = num_samples // len(graph_types)  # Equal distribution among types
+    min_nodes, max_nodes = parse_node_range(num_nodes_config)
     
-    # First generate our new graphs
-    for graph_type in graph_types:
-        print(f"Generating {samples_per_type} {graph_type} graphs...")
-        
-        for i in range(samples_per_type):
-            graph_id = f"graph_R{len(graphs)}"  # R prefix for random/generated graphs
-            
-            if graph_type == 'BA':
-                # Barabási-Albert graphs - always connected by design
-                m = max(2, num_nodes // 10)  # Increase minimum edges for better connectivity
-                G = nx.barabasi_albert_graph(n=num_nodes, m=m)
-                
-            elif graph_type == 'ER':
-                # Erdős-Rényi graphs - ensure higher edge probability
-                # p > ln(n)/n ensures connectivity with high probability
-                p = max(0.3, np.log(num_nodes) / num_nodes)
-                while True:
-                    G = nx.erdos_renyi_graph(num_nodes, p)
-                    if nx.is_connected(G):
-                        break
-                
-            elif graph_type == 'WS':
-                # Watts-Strogatz graphs - ensure higher k and lower rewiring probability
-                k = max(4, num_nodes // 5)  # Higher k ensures better connectivity
-                p = 0.2  # Lower rewiring probability to maintain structure
-                G = nx.watts_strogatz_graph(n=num_nodes, k=k, p=p)
-            
-            # Convert to PyG Data object
-            data = convert_to_pyg_data(G, graph_id, add_communities=add_communities_to_generated)
-            graphs.append(data)
-
-    # Now load and add the community dataset graphs
-    print(f"\nLoading community dataset from {community_dataset_path}")
-    try:
-        with open(community_dataset_path, 'rb') as f:
-            community_graphs = pickle.load(f)
-        print(f"Loaded {len(community_graphs)} community graphs")
-        
-        # Process community graphs to ensure they have community attributes
-        processed_community_graphs = []
-        for data in community_graphs:
-            # Check if community information already exists
-            if hasattr(data, 'community') and hasattr(data, 'num_communities'):
-                processed_community_graphs.append(data)
-            else:
-                # Extract community information if it exists in the original format
-                if hasattr(data, 'communities'):  # Old format
-                    communities_dict = data.communities
-                    community_tensor = torch.zeros(data.num_nodes, dtype=torch.long)
-                    for node, comm in communities_dict.items():
-                        community_tensor[node] = comm
-                    
-                    data.community = community_tensor
-                    data.num_communities = torch.tensor(len(set(communities_dict.values())))
-                
-                processed_community_graphs.append(data)
-        
-        # Add all processed community graphs to our collection
-        graphs.extend(processed_community_graphs)
-        print(f"Combined dataset now has {len(graphs)} graphs total")
-        
-        # Print community statistics
-        community_graphs_count = sum(1 for g in graphs if hasattr(g, 'community'))
-        non_community_graphs_count = len(graphs) - community_graphs_count
-        print(f"  - Graphs with community info: {community_graphs_count}")
-        print(f"  - Graphs without community info: {non_community_graphs_count}")
-        
-    except FileNotFoundError:
-        print(f"Warning: Community dataset not found at {community_dataset_path}")
-        print("Proceeding with only generated graphs")
-
-    # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    # Set random seed for reproducibility
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
     
-    # Save the combined graphs
-    with open(save_path, "wb") as f:
-        pickle.dump(graphs, f)
-    print(f"Saved combined dataset to {save_path}")
+    for i in range(num_graphs):
+        # Sample number of nodes for this graph
+        num_nodes = sample_num_nodes(min_nodes, max_nodes, seed + i if seed else None)
+        
+        current_seed = seed + i if seed else None
+        # Ensure connectivity by regenerating if disconnected
+        while True:
+            G = nx.erdos_renyi_graph(num_nodes, p, seed=current_seed)
+            if nx.is_connected(G):
+                break
+            if current_seed:
+                current_seed += 1
+        
+        G.graph['id'] = f"ER_{i:04d}"
+        G.graph['type'] = 'ER'
+        G.graph['params'] = {'p': p, 'seed': current_seed, 'num_nodes': num_nodes}
+        G.graph['has_communities'] = False
+        graphs.append(G)
     
     return graphs
 
-if __name__ == "__main__":
-    config = ConfigManager()
+def generate_ba_graphs(num_graphs: int, num_nodes_config: Union[int, str, Dict], 
+                      m: int = 3, seed: int = 42) -> List[nx.Graph]:
+    """Generate Barabási-Albert graphs with variable node counts"""
+    graphs = []
+    min_nodes, max_nodes = parse_node_range(num_nodes_config)
     
-    parser = argparse.ArgumentParser(description='Generate graph dataset with specified types')
-    parser.add_argument('--graph-types', type=str, default='ER,WS,BA',
-                        help='Comma-separated list of graph types to generate (ER,WS,BA)')
-    parser.add_argument('--num-samples', type=int, default=config.get('data.generation.num_samples', 3),
-                        help='Total number of graphs to generate')
-    parser.add_argument('--num-nodes', type=int, default=config.get('data.generation.num_nodes', 40),
-                        help='Number of nodes in each graph')
-    parser.add_argument('--output', type=str, 
-                        default=os.path.join(config.get_data_path('graphs'), 'deepdrawingReproduceFinal_graphs.pkl'),
-                        help='Path to save the generated graphs')
-    parser.add_argument('--seed', type=int, default=config.get('training.seed', 42),
-                        help='Random seed for reproducibility')
-    parser.add_argument('--add-communities-to-generated', action='store_true',
-                        help='Add detected communities to generated graphs (ER, WS, BA)')
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+    
+    for i in range(num_graphs):
+        # Sample number of nodes for this graph
+        num_nodes = sample_num_nodes(min_nodes, max_nodes, seed + i if seed else None)
+        
+        # Ensure m is valid for the number of nodes
+        effective_m = min(m, num_nodes - 1)
+        
+        current_seed = seed + i if seed else None
+        G = nx.barabasi_albert_graph(num_nodes, effective_m, seed=current_seed)
+        
+        G.graph['id'] = f"BA_{i:04d}"
+        G.graph['type'] = 'BA'
+        G.graph['params'] = {'m': effective_m, 'seed': current_seed, 'num_nodes': num_nodes}
+        G.graph['has_communities'] = False
+        graphs.append(G)
+    
+    return graphs
+
+def generate_ws_graphs(num_graphs: int, num_nodes_config: Union[int, str, Dict], 
+                      k: int = 6, p: float = 0.2, seed: int = 42) -> List[nx.Graph]:
+    """Generate Watts-Strogatz graphs with variable node counts"""
+    graphs = []
+    min_nodes, max_nodes = parse_node_range(num_nodes_config)
+    
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+    
+    for i in range(num_graphs):
+        # Sample number of nodes for this graph
+        num_nodes = sample_num_nodes(min_nodes, max_nodes, seed + i if seed else None)
+        
+        # Ensure k is valid for the number of nodes
+        effective_k = min(k, num_nodes - 1)
+        # k must be even for WS graphs
+        if effective_k % 2 != 0:
+            effective_k -= 1
+        effective_k = max(2, effective_k)  # Minimum k = 2
+        
+        current_seed = seed + i if seed else None
+        G = nx.watts_strogatz_graph(num_nodes, effective_k, p, seed=current_seed)
+        
+        G.graph['id'] = f"WS_{i:04d}"
+        G.graph['type'] = 'WS'
+        G.graph['params'] = {'k': effective_k, 'p': p, 'seed': current_seed, 'num_nodes': num_nodes}
+        G.graph['has_communities'] = False
+        graphs.append(G)
+    
+    return graphs
+
+def generate_community_graphs_integrated(num_graphs: int, num_nodes_config: Union[int, str, Dict], 
+                                       **params) -> List[nx.Graph]:
+    """
+    Generate community graphs using LFR benchmark
+    
+    Args:
+        num_graphs: Number of graphs to generate
+        num_nodes_config: Node count configuration 
+        **params: LFR parameters (all standard LFR parameters supported)
+    
+    Returns:
+        List of NetworkX graphs with community information
+    """
+    from community_graph_utils import generate_community_graphs_variable
+    
+    # LFR defaults
+    default_params = {
+        'avg_degree': 10,
+        'max_degree': 50,
+        'mixing_parameter': 0.1,
+        'weight_mixing': 0.0,
+        'degree_exponent': 2.0,
+        'community_exponent': 1.0,
+        'weight_exponent': 1.5,
+        'min_community_size': 10,
+        'max_community_size': 50,
+        'timeout': 30,
+        'seed': 42,
+    }
+    
+    final_params = default_params.copy()
+    final_params.update(params)
+    
+    return generate_community_graphs_variable(
+        num_graphs=num_graphs,
+        num_nodes_config=num_nodes_config,
+        **final_params
+    )
+
+def save_graphs(graphs: List[nx.Graph], filepath: str):
+    """Save graphs to file with metadata"""
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    # Add generation metadata
+    metadata = {
+        'generation_time': datetime.now().isoformat(),
+        'num_graphs': len(graphs),
+        'graph_types': list(set(g.graph.get('type', 'unknown') for g in graphs))
+    }
+    
+    save_data = {
+        'graphs': graphs,
+        'metadata': metadata
+    }
+    
+    with open(filepath, 'wb') as f:
+        pickle.dump(save_data, f)
+    
+    print(f"Saved {len(graphs)} graphs to {filepath}")
+
+def load_graphs_with_metadata(filepath: str) -> tuple:
+    """
+    Load graphs with metadata, handling both old and new formats
+    
+    Returns:
+        tuple: (graphs, metadata)
+    """
+    with open(filepath, 'rb') as f:
+        data = pickle.load(f)
+    
+    if isinstance(data, list):
+        # Old format: just graphs
+        return data, {}
+    elif isinstance(data, dict) and 'graphs' in data:
+        # New format: graphs with metadata
+        return data['graphs'], data.get('metadata', {})
+    else:
+        raise ValueError(f"Unknown file format in {filepath}")
+
+def generate_graphs_from_config(graph_config: Dict[str, Any], 
+                              config_manager: ConfigManager) -> str:
+    """Generate graphs according to configuration"""
+    graph_type = graph_config['type']
+    num_graphs = graph_config['num_graphs']
+    
+    # Handle both old and new num_nodes format
+    num_nodes_config = graph_config.get('num_nodes', config_manager.get_default('num_nodes', 50))
+    params = graph_config.get('params', {})
+    output_prefix = graph_config.get('output_prefix', f"{graph_type.lower()}")
+    
+    # Add default seed if not specified
+    if 'seed' not in params:
+        params['seed'] = config_manager.get_default('seed', 42)
+    
+    # Parse node range for logging
+    min_nodes, max_nodes = parse_node_range(num_nodes_config)
+    if min_nodes == max_nodes:
+        print(f"Generating {num_graphs} {graph_type} graphs with {min_nodes} nodes...")
+    else:
+        print(f"Generating {num_graphs} {graph_type} graphs with {min_nodes}-{max_nodes} nodes...")
+    
+    # Generate graphs based on type
+    try:
+        if graph_type == 'ER':
+            graphs = generate_er_graphs(num_graphs, num_nodes_config, **params)
+        elif graph_type == 'BA':
+            graphs = generate_ba_graphs(num_graphs, num_nodes_config, **params)
+        elif graph_type == 'WS':
+            graphs = generate_ws_graphs(num_graphs, num_nodes_config, **params)
+        elif graph_type == 'Community':
+            graphs = generate_community_graphs_integrated(num_graphs, num_nodes_config, **params)
+            if not graphs:
+                print(f"Warning: No {graph_type} graphs were successfully generated")
+                return ""
+        else:
+            raise ValueError(f"Unknown graph type: {graph_type}")
+    except Exception as e:
+        print(f"Error generating {graph_type} graphs: {e}")
+        return ""
+    
+    if not graphs:
+        print(f"No graphs generated for type {graph_type}")
+        return ""
+    
+    # Generate descriptive filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if min_nodes == max_nodes:
+        filename = f"{output_prefix}_{num_graphs}graphs_{min_nodes}nodes_{timestamp}.pkl"
+    else:
+        filename = f"{output_prefix}_{num_graphs}graphs_{min_nodes}-{max_nodes}nodes_{timestamp}.pkl"
+    
+    # Save graphs
+    graphs_dir = config_manager.get_path('graphs')
+    filepath = os.path.join(graphs_dir, filename)
+    save_graphs(graphs, filepath)
+    
+    # Print statistics
+    print_graph_statistics(graphs)
+    
+    return filepath
+
+def print_graph_statistics(graphs: List[nx.Graph]):
+    """Print comprehensive statistics about generated graphs"""
+    if not graphs:
+        print("No graphs to analyze")
+        return
+    
+    # Basic statistics
+    node_counts = [G.number_of_nodes() for G in graphs]
+    edge_counts = [G.number_of_edges() for G in graphs]
+    avg_degrees = [2 * G.number_of_edges() / G.number_of_nodes() for G in graphs if G.number_of_nodes() > 0]
+    
+    print(f"\n=== Graph Statistics ===")
+    print(f"Total graphs: {len(graphs)}")
+    print(f"Node count: {min(node_counts)}-{max(node_counts)} (avg: {np.mean(node_counts):.1f})")
+    print(f"Edge count: {min(edge_counts)}-{max(edge_counts)} (avg: {np.mean(edge_counts):.1f})")
+    print(f"Average degree: {min(avg_degrees):.1f}-{max(avg_degrees):.1f} (avg: {np.mean(avg_degrees):.1f})")
+    
+    # Type-specific statistics
+    graph_types = {}
+    for G in graphs:
+        gtype = G.graph.get('type', 'unknown')
+        graph_types[gtype] = graph_types.get(gtype, 0) + 1
+    
+    print(f"Graph types: {dict(graph_types)}")
+    
+    # Community-specific statistics
+    community_graphs = [G for G in graphs if G.graph.get('has_communities', False)]
+    if community_graphs:
+        num_comms = [G.graph.get('num_communities', 0) for G in community_graphs]
+        mix_weights = [G.graph.get('params', {}).get('mix_weight', 0) for G in community_graphs]
+        
+        print(f"Community graphs: {len(community_graphs)}")
+        print(f"Communities per graph: {min(num_comms)}-{max(num_comms)} (avg: {np.mean(num_comms):.1f})")
+        if any(mw > 0 for mw in mix_weights):
+            print(f"Mix weights: {min(mix_weights):.3f}-{max(mix_weights):.3f} (avg: {np.mean(mix_weights):.3f})")
+    
+    # Connectivity check
+    connected_graphs = sum(1 for G in graphs if nx.is_connected(G))
+    print(f"Connected graphs: {connected_graphs}/{len(graphs)} ({100*connected_graphs/len(graphs):.1f}%)")
+
+def main():
+    parser = argparse.ArgumentParser(description='Generate graph datasets')
+    parser.add_argument('--config', required=True, 
+                       help='Experiment configuration file name (without .yaml)')
+    parser.add_argument('--global-config', default='../config.yaml',
+                       help='Global configuration file path')
+    parser.add_argument('--verbose', action='store_true',
+                       help='Print verbose output')
     
     args = parser.parse_args()
     
-    # Set random seeds
-    random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    # Initialize configuration manager
+    config_manager = ConfigManager(args.global_config)
+    config_manager.ensure_directories()
     
-    # Parse and validate graph types
-    graph_types = [t.strip().upper() for t in args.graph_types.split(',')]
-    valid_types = {'ER', 'WS', 'BA'}
-    if not all(t in valid_types for t in graph_types):
-        invalid = [t for t in graph_types if t not in valid_types]
-        print(f"Error: Invalid graph type(s): {invalid}")
-        print(f"Valid types are: {', '.join(valid_types)}")
-        exit(1)
-        
-    # Generate graphs
-    generate_graphs(args.num_samples, args.num_nodes, graph_types, args.output, 
-                   add_communities_to_generated=args.add_communities_to_generated) 
+    # Load experiment configuration
+    try:
+        experiment_config = load_experiment_config(args.config)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
+    except Exception as e:
+        print(f"Error loading config: {e}")
+        return
+    
+    experiment_name = experiment_config.get('experiment_name', 'unnamed')
+    print(f"Running experiment: {experiment_name}")
+    
+    # Generate graphs according to configuration
+    graph_configs = experiment_config.get('graphs', [])
+    if not graph_configs:
+        print("No graph configurations found in experiment config")
+        return
+    
+    generated_files = []
+    total_graphs = 0
+    
+    for i, graph_config in enumerate(graph_configs):
+        try:
+            print(f"\n--- Processing graph configuration {i+1}/{len(graph_configs)} ---")
+            if args.verbose:
+                print(f"Config: {graph_config}")
+                
+            filepath = generate_graphs_from_config(graph_config, config_manager)
+            if filepath:
+                generated_files.append(filepath)
+                # Count graphs in this file
+                with open(filepath, 'rb') as f:
+                    data = pickle.load(f)
+                    if isinstance(data, dict) and 'graphs' in data:
+                        total_graphs += len(data['graphs'])
+                    elif isinstance(data, list):
+                        total_graphs += len(data)
+            else:
+                print(f"Failed to generate graphs for configuration {i+1}")
+                
+        except Exception as e:
+            print(f"Error generating graphs for configuration {i+1}: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+    
+    # Summary
+    print(f"\n=== Generation Summary ===")
+    print(f"Generated {len(generated_files)} graph files with {total_graphs} total graphs")
+    print(f"Experiment: {experiment_name}")
+    print(f"Output files:")
+    for filepath in generated_files:
+        print(f"  {filepath}")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,79 @@
+# Training configuration for different layout types
+force_directed:
+  lr: 0.001
+  batch_size: 32
+  epochs: 1000
+  weight_decay: 0.01
+  min_epochs: 100
+  max_patience: 30
+
+circular:
+  lr: 0.003
+  batch_size: 64
+  epochs: 500
+  weight_decay: 0.005
+  min_epochs: 50
+  max_patience: 30
+
+# Model-specific configurations
+models:
+  # Baseline models
+  GCN:
+    hidden_dim: 64
+    num_layers: 3
+    dropout: 0.1
+    use_residual: true
+    use_input_mlp: true
+    
+  GAT:
+    hidden_dim: 64
+    num_layers: 3
+    heads: 4
+    dropout: 0.1
+    use_residual: true
+    use_input_mlp: true
+    
+  GIN:
+    hidden_dim: 64
+    num_layers: 3
+    dropout: 0.1
+    use_residual: true
+    use_input_mlp: true
+    
+  ChebNet:
+    hidden_dim: 64
+    num_layers: 2
+    K: 3
+    dropout: 0.1
+    use_residual: true
+    use_input_mlp: true
+  
+  # Spring layout models
+  SimpleSpringGNN:
+    hidden_dim: 64
+    dropout: 0.1
+    
+  MultiScaleSpringGNN:
+    hidden_dim: 64
+    top_k: 16
+    dropout: 0.1
+    
+  AntiSmoothingSpringGNN:
+    hidden_dim: 64
+    dropout: 0.1
+    
+  ForceGNN:
+    hidden_dim: 64
+    dropout: 0.1
+
+# Data configuration
+data:
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  random_state: 42
+
+# Other settings
+device: "auto"  # "auto", "cpu", "cuda"
+save_results: true
+results_dir: "results"
