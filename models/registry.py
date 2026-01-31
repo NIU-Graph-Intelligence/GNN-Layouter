@@ -8,6 +8,7 @@ from .simple_spring_gnn import SimpleSpringGNN
 from .multiscale_spring_gnn import MultiScaleSpringGNN
 from .antismoothing_spring_gnn import AntiSmoothingSpringGNN
 from .force_gnn import ForceGNN
+from .fr_replicator import FRUnrolled
 
 
 from .baseline import GCN, GAT, GIN, ChebNet
@@ -24,6 +25,7 @@ MODEL_REGISTRY = {
     'MultiScaleSpringGNN': MultiScaleSpringGNN,
     'AntiSmoothingSpringGNN': AntiSmoothingSpringGNN,
     'ForceGNN': ForceGNN,
+    "FRUnrolled": FRUnrolled,
 }
 
 def get_available_models():

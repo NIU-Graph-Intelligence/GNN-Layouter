@@ -97,13 +97,17 @@ def parse_args():
                        help='Device to use for training')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed for reproducibility')
+    parser.add_argument('--preview', action='store_true',
+                       help='If set, save a 2-graph snapshot every 10 epochs (incl. epoch 0)')
+    parser.add_argument('--preview_every', type=int, default=10,
+                          help='Save preview every N epochs (default: 10)')
     
     return parser.parse_args()
 
 def setup_device(device_arg: str) -> torch.device:
     """Setup computation device"""
     if device_arg == 'auto':
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     else:
         device = torch.device(device_arg)
     
@@ -145,6 +149,8 @@ def create_model(model_name: str, input_dim: int, config: dict) -> torch.nn.Modu
 def main():
     args = parse_args()
     
+
+
     # Set random seed
     torch.manual_seed(args.seed)
     
@@ -184,6 +190,13 @@ def main():
     for key, value in dataset_info.items():
         print(f"  {key}: {value}")
     
+    # Choose up to two fixed graphs to preview throughout training
+    monitor_samples = []
+    if len(dataset) >= 1:
+        monitor_samples.append(dataset[0])
+    if len(dataset) >= 2:
+        monitor_samples.append(dataset[1])
+
     # Create data loaders
     data_config = config.get('data', {})
     splits = [data_config.get('train_split', 0.8), 
@@ -234,7 +247,10 @@ def main():
         val_loader=val_loader,
         save_dir=save_dir,
         save_filename=save_filename,  # Pass the filename separately
-        model_name=args.model
+        model_name=args.model,
+        preview=args.preview,
+        preview_every=args.preview_every,
+        monitor_samples=monitor_samples
     )
     
     if checkpoint_path:

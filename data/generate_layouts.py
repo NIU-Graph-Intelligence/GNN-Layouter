@@ -37,7 +37,7 @@ def compute_circular_layout(graphs: List[nx.Graph]) -> List[Dict]:
     return layouts
 
 def compute_spring_layout(graphs: List[nx.Graph], iterations: int = 50, 
-                         seed: int = 42) -> Tuple[List[Dict], List[Dict]]:
+                         seed: int = 42, scale: Optional[float] = None) -> Tuple[List[Dict], List[Dict]]:
     """Compute spring layouts, returns (layouts, initial_positions)"""
     layouts = []
     initial_positions = []
@@ -47,7 +47,7 @@ def compute_spring_layout(graphs: List[nx.Graph], iterations: int = 50,
         init_pos = _generate_grid_positions(G)
         
         # Compute spring layout
-        pos = nx.spring_layout(G, pos=init_pos, iterations=iterations, seed=seed)
+        pos = nx.spring_layout(G, pos=init_pos, iterations=iterations, seed=seed, scale=scale)
         
         layout_data = {
             'graph_id': G.graph['id'],

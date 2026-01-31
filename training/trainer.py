@@ -8,6 +8,9 @@ from torch.utils.data import DataLoader
 from typing import Dict, Optional, List
 from .losses import compute_loss_per_graph
 from .evaluation import evaluate_model
+from visualize import GraphVisualizer
+import networkx as nx
+
 
 class Trainer:
     def __init__(self, 
@@ -66,13 +69,16 @@ class Trainer:
                 pred_coords = self.model(batch.x, batch.edge_index)
                 
                 # Compute loss
-                loss = compute_loss_per_graph(
-                    pred_coords, 
-                    batch.y, 
-                    batch.batch, 
-                    self.loss_type
-                )
-                
+                # loss = compute_loss_per_graph(
+                #     pred_coords, 
+                #     batch.y, 
+                #     batch.batch, 
+                #     self.loss_type
+                # )
+                loss = compute_loss_per_graph(pred_coords, true_coords=batch.y,
+                                             batch=batch.batch, loss_type = 'distill', edge_index=batch.edge_index
+                                             , lambda_edge=0.2)
+
                 # Backward pass
                 loss.backward()
                 self.optimizer.step()
@@ -95,7 +101,10 @@ class Trainer:
               val_loader: DataLoader,
               save_dir: str,
               save_filename: str,
-              model_name: str) -> Optional[str]:
+              model_name: str,
+              preview: bool = False,
+              preview_every: int = 10,
+              monitor_samples: Optional[list] = None) -> Optional[str]:
         """
         Train the model with flexible file naming.
         
@@ -105,6 +114,9 @@ class Trainer:
             save_dir: Directory to save checkpoints
             save_filename: Specific filename for the checkpoint
             model_name: Name for logging purposes
+            preview: If True, save a two-graph snapshot at epoch 0 and every 10 epochs
+            preview_every: Interval (in epochs) for saving previews
+            monitor_samples: List of up to two PyG Data graphs to preview consistently
             
         Returns:
             Path to best checkpoint if successful, None otherwise
@@ -115,6 +127,104 @@ class Trainer:
         print(f"Training {model_name} for {self.loss_type} layout")
         print(f"Saving checkpoints to {save_path}")
         
+        # --- Preview setup ---
+        previews_dir = os.path.join(os.path.dirname(save_path), "previews")
+        if preview and monitor_samples:
+            os.makedirs(previews_dir, exist_ok=True)
+            gv = GraphVisualizer(device=self.device)
+
+            def _save_preview(epoch: int):
+                """
+                Render one fixed graph side-by-side:
+                left  = ground-truth coordinates (data.y)
+                right = current model prediction
+                """
+                if not monitor_samples:
+                    return
+
+                data = monitor_samples[0]   # use only the first sample
+                # Safety: ensure we have GT coordinates
+                if not hasattr(data, "y") or data.y is None:
+                    print(f"[preview] no ground-truth 'y' on sample; skipping epoch {epoch}")
+                    return
+
+                # Forward pass for prediction
+                try:
+                    self.model.eval()
+                    with torch.no_grad():
+                        pred = self.model(data.x.to(self.device), data.edge_index.to(self.device))
+                    pos_pred = pred.detach().cpu().numpy()
+                    if pos_pred.shape[1] > 2:    # if model outputs >2 dims, take first 2
+                        pos_pred = pos_pred[:, :2]
+                except Exception as e:
+                    print(f"[preview] forward failed at epoch {epoch}: {e}")
+                    return
+                finally:
+                    self.model.train()
+
+                # Ground truth positions
+                pos_true = data.y.detach().cpu().numpy()
+                if pos_true.shape[1] > 2:
+                    pos_true = pos_true[:, :2]
+
+                # Build NX graph & colors via your helpers
+                try:
+                    gv = GraphVisualizer(device=self.device)
+                    G = gv.create_networkx_graph(data)
+                    node_colors, _ = gv.get_node_colors(data)
+                except Exception as e:
+                    print(f"[preview] NX/color failed at epoch {epoch}: {e}")
+                    return
+
+                # Two-panel figure: GT (left) vs Pred (right)
+                fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+                ax_true, ax_pred = axes
+
+                nx.draw(
+                    G,
+                    pos={i: pos_true[i] for i in range(data.num_nodes)},
+                    ax=ax_true,
+                    node_color=node_colors,
+                    edge_color='gray',
+                    alpha=0.85,
+                    node_size=50,
+                    width=0.4,
+                    with_labels=False
+                )
+                title_id = getattr(data, 'graph_id', None) or "Sample"
+                layout_type = getattr(data, 'layout_type', 'ground-truth')
+                ax_true.set_title(f"{title_id} — Ground Truth ({layout_type})")
+                ax_true.set_aspect('equal'); ax_true.axis('off')
+
+                nx.draw(
+                    G,
+                    pos={i: pos_pred[i] for i in range(data.num_nodes)},
+                    ax=ax_pred,
+                    node_color=node_colors,
+                    edge_color='gray',
+                    alpha=0.85,
+                    node_size=50,
+                    width=0.4,
+                    with_labels=False
+                )
+                ax_pred.set_title(f"{title_id} — Prediction (epoch {epoch})")
+                ax_pred.set_aspect('equal'); ax_pred.axis('off')
+
+                fig.suptitle(f"{self.loss_type.capitalize()} preview — epoch {epoch}", y=0.98)
+
+                out_path = os.path.join(previews_dir, f"epoch_{epoch:05d}.png")
+                plt.savefig(out_path, dpi=160, bbox_inches="tight")
+                plt.close(fig)
+                print(f"[preview] saved {out_path}")
+
+
+            # Initial snapshot (epoch 0)
+            try:
+                _save_preview(0)
+            except Exception as e:
+                print(f"[preview] initial snapshot skipped: {e}")
+
+
         for epoch in range(self.epochs):
             # Train and validate
             train_loss = self.train_epoch(train_loader)
@@ -143,7 +253,14 @@ class Trainer:
             if epoch >= self.min_epochs and self.patience_counter >= self.max_patience:
                 print(f'Early stopping triggered after {epoch + 1} epochs')
                 break
-        
+
+            # Periodic preview
+            if preview and monitor_samples and ((epoch + 1) % preview_every == 0):
+                try:
+                    _save_preview(epoch + 1)
+                except Exception as e:
+                    print(f"[preview] skipped at epoch {epoch + 1}: {e}")
+
         return save_path if os.path.exists(save_path) else None
     
     def save_checkpoint(self, save_path: str):
