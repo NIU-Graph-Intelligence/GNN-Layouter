@@ -1,0 +1,33 @@
+experiment_name: "community_80-100nodes_1iter_experiment"
+
+# Reuse the existing graphs: comm_5k100nodes_5000graphs_80-100nodes_20250927_005400.pkl
+
+layouts:
+  # Spring layout with only 1 iteration (single FR step)
+  - type: "spring"
+    params:
+      iterations: 1
+      seed: 42
+      scale: null
+    apply_to: ["comm_5k100nodes_5000graphs_80-100nodes_"]
+    save_initial: true
+
+datasets:
+  # Dataset with 1-iteration targets
+  - name: "community_5k_Nodes80-100_force_directed_1iter"
+    graph_patterns: ["comm_5k100nodes_5000graphs_80-100nodes_*"]
+    layout_type: "spring"
+    features:
+      # Node-level features
+      degree: true
+      positional: true
+      onehot: false
+      initial_position: true
+      random: true
+      
+      # Graph-level features
+      graph_size: true
+      graph_density: true
+      graph_density_norm: true
+      clustering_coefficient: true
+      clustering_coefficient_norm: true

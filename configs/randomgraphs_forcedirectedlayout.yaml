@@ -1,0 +1,57 @@
+experiment_name: "Random Graph Types Generation"
+description: "Generate ER, BA, and WS graphs"
+
+graphs:
+  - type: "ER"
+    num_graphs: 700
+    num_nodes: 50
+    output_prefix: "er_random"
+    params:
+      p: 0.1
+      seed: 42
+
+  - type: "BA"
+    num_graphs: 700
+    num_nodes: 50
+    output_prefix: "ba_random"
+    params:
+      m: 3
+      seed: 42
+
+  - type: "WS"
+    num_graphs: 700
+    num_nodes: 50
+    output_prefix: "ws_random"
+    params:
+      k: 6
+      p: 0.2
+      seed: 42
+
+layouts:
+  - type: "spring"
+    params: 
+      iterations: 100
+      seed: 42
+    apply_to: ["er_random_700graphs", "ba_random_700graphs", "ws_random_700graphs"]
+    save_initial: true
+
+
+
+datasets:
+  - name: "random_graphs_2k_forcedirected"
+    graph_patterns: ["er_random_700graphs*", "ba_random_700graphs*", "ws_random_700graphs*"]
+    layout_type: "spring"
+    features:
+      # Node-level features
+      degree: true
+      positional: true
+      onehot: true              # Set to true only if all graphs have same number of nodes
+      initial_position: true     # Requires save_initial: true in layouts
+      # random: true
+      
+      # Graph-level features (same value for all nodes in a graph)
+      # graph_size: true
+      # graph_density: true
+      # graph_density_norm: true   # Normalized version of graph_density
+      # clustering_coefficient: true
+      # clustering_coefficient_norm: true  # Normalized version of clustering_coefficient  

@@ -1,0 +1,63 @@
+experiment_name: "fr_single_step_whitebox"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Graph generation (reuse existing community graphs — no need to regenerate)
+# ──────────────────────────────────────────────────────────────────────────────
+# Point to existing graphs created by the community_only experiment.
+# Run this first if you haven't already:
+#   python data/generate_graphs.py --config community_only
+#
+# Graphs file pattern: data/graphs/comm_5k_5000graphs_20-50nodes_*.pkl
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 1 – Generate per-iteration snapshots (new script)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+#   python data/generate_fr_iterations.py \
+#       --graphs_file "data/graphs/comm_5k_5000graphs_20-50nodes_*.pkl" \
+#       --output      data/layouts/comm_5k_fr_iters.pkl \
+#       --n_iter      50 \
+#       --seed        42 \
+#       --verify          # optional: cross-check first graph vs networkx
+
+fr_iterations:
+  n_iter: 50
+  seed: 42
+  output: "data/layouts/comm_5k_fr_iters.pkl"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 2 – Build PyG dataset from iteration snapshots
+# ──────────────────────────────────────────────────────────────────────────────
+#
+#   python data/generate_iterative_dataset.py \
+#       --graphs_file "data/graphs/comm_5k_5000graphs_20-50nodes_*.pkl" \
+#       --iters_file  data/layouts/comm_5k_fr_iters.pkl \
+#       --output      data/processed/comm_5k_fr_single_step.pt
+#
+# Resulting dataset:
+#   • 5 000 graphs × 50 steps = 250 000 samples
+#   • x shape : [N, 5]  → [degree_norm, k_val, temp_ratio, pos_t_x, pos_t_y]
+#   • y shape : [N, 2]  → pos_{t+1}
+
+dataset:
+  output: "data/processed/comm_5k_fr_single_step.pt"
+  steps_per_graph: 50      # keep all 50 steps
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 3 – Train
+# ──────────────────────────────────────────────────────────────────────────────
+#
+#   python train.py \
+#       --model        FROneIterReplicator \
+#       --layout_type  force_directed \
+#       --data_path    data/processed/comm_5k_fr_single_step.pt \
+#       --config       configs/fr_single_step.yaml
+#
+# The loss used during training is force_directed (plain MSE on coordinates).
+# Validation metric: MSE between predicted pos_{t+1} and ground-truth pos_{t+1}.
+# Target: val_loss ≈ 0 (100% replication).
+
+training:
+  model: FROneIterReplicator
+  layout_type: force_directed
+  data_path: "data/processed/comm_5k_fr_single_step.pt"

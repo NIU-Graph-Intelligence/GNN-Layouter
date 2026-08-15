@@ -1,0 +1,16 @@
+experiment_name: "scale_free_second_family"
+description: >
+  Second graph family for PAPER_PLAN.md SS11 Risk 4 (Q8): scale-free
+  Barabasi-Albert graphs at the same N=20-50 range and the same 5000-graph
+  count as the community family, so every result is not answerable with
+  "you only tested one generator". FR trajectories at 50 steps, same
+  grid init / linear-cooling temperature convention as the community family.
+
+graphs:
+  - type: "BA"
+    num_graphs: 5000
+    num_nodes: 20-50
+    output_prefix: "sf_5k"
+    params:
+      m: 3
+      seed: 42

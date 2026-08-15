@@ -1,0 +1,46 @@
+experiment_name: "Random Graph Types Generation"
+description: "Generate ER, BA, and WS graphs"
+
+graphs:
+  - type: "ER"
+    num_graphs: 1000
+    num_nodes: 50
+    output_prefix: "er_random"
+    params:
+      p: 0.1
+      seed: 42
+
+  - type: "BA"
+    num_graphs: 1000
+    num_nodes: 50
+    output_prefix: "ba_random"
+    params:
+      m: 3
+      seed: 42
+
+  - type: "WS"
+    num_graphs: 1000
+    num_nodes: 50
+    output_prefix: "ws_random"
+    params:
+      k: 6
+      p: 0.2
+      seed: 42
+
+layouts:
+  - type: "circular"
+    params: 
+      seed: 42
+    apply_to: ["er_random_", "ba_random_", "ws_random_"]
+
+
+
+datasets:
+  - name: "random_graphs_3k_circular"
+    graph_patterns: ["er_random_*.pkl", "ba_random_*.pkl", "ws_random_*.pkl"]
+    layout_type: "circular"
+    features:
+      degree: true
+      positional: true
+      onehot: true  # Not used with variable node counts (20-50)
+      

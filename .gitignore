@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+.venv/
+.firstvm/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Generated data (large binary files — regenerate with pipeline scripts).
+# Data-file extensions only, not the whole directory: data/processed/ has
+# real pipeline scripts living alongside the .pt/.pkl outputs
+# (generate_fr_iterations.py, generate_fa2_iterations.py, dataset.py, ...)
+# that a blanket directory ignore was silently excluding from git entirely
+# -- found 2026-08-13 while adding generate_fa2_iterations.py and it hit the
+# same ignore. Those scripts were never version-controlled before this fix.
+data/graphs/*.pkl
+data/layouts/*.pkl
+data/processed/*.pt
+data/processed/*.pkl
+data/corpora/
+temp_lfr_shared/
+lfrbench_udwov/
+
+# Results (checkpoints, plots, previews)
+results/
+checkpoints/
+visualizations/
+
+# Third-party baseline checkouts (kept as independent repositories)
+external/
+
+# Keep directory stubs so git tracks the folder structure
+!data/graphs/.gitkeep
+!data/layouts/.gitkeep
+!data/processed/.gitkeep
+!results/.gitkeep
+
+CLAUDE.md
+
+# Anchored to repo root: these are old flat-layout scratch filenames, not a
+# blanket ban on the basename anywhere in the tree (glide/stage1/train.py,
+# glide/executor/train.py etc. are real package files with the same name).
+/train.py
+/test.py
+/fr_pytorch.py
+/utils.py
+/training_config.yaml
+/visualize.py
+/data/dataset.py
+/analyze_dataset.py
+/diagnose_dataset.py
+models/
+training/
+
+# --- Retired paper-pipeline governance. The paper lives in a separate repo
+# (graphvis-light-survey, authoritative copy on the laptop); these files were
+# the paper-writing record that used to live inside this code repo. They are
+# kept on disk for reference but must not be tracked by the fresh repo.
+paper/
+result.md
+BASELINES.md
+AGENTS.md
+.claude/
+docs/
+configs/experiments.yaml
+
+# Infrastructure scripts tied to the old lancer / work-dir workflow.
+# The repo no longer assumes results are written into a shared work dir.
+scripts/sync_lancer_assets.sh
+scripts/sync_lancer_baselines.sh
+scripts/monitor_training.sh
+
+# Regenerable evaluation artifacts (prediction npz, scored JSON/CSV).
+eval/predictions/*.npz
+eval/results/
+eval/predictions/gnd_fr_test.npz

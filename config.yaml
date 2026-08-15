@@ -1,0 +1,11 @@
+# config.yaml
+paths:
+  data_root: "data"
+  graphs: "data/graphs"
+  layouts: "data/layouts"
+  processed: "data/processed"
+  experiment_configs: "configs"
+
+defaults:
+  seed: 42
+  num_nodes: 50

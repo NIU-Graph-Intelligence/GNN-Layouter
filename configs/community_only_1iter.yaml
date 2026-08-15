@@ -1,0 +1,34 @@
+experiment_name: "community_only_1iter_experiment"
+
+# No graphs section - we reuse the existing graphs from community_only.yaml
+# Graph file: comm_5k_5000graphs_20-50nodes_20250920_233608.pkl
+
+layouts:
+  # Spring layout with only 1 iteration (single FR step)
+  - type: "spring"
+    params:
+      iterations: 1
+      seed: 42
+      scale: null
+    apply_to: ["comm_5k_5000graphs_20-50nodes_"]
+    save_initial: true
+
+datasets:
+  # Dataset with 1-iteration targets
+  - name: "community_5k_Nodes20-50_force_directed_1iter"
+    graph_patterns: ["comm_5k_5000graphs_20-50nodes_*"]
+    layout_type: "spring"
+    features:
+      # Node-level features
+      degree: true
+      positional: true
+      onehot: false
+      initial_position: true
+      random: true
+      
+      # Graph-level features
+      graph_size: true
+      graph_density: true
+      graph_density_norm: true
+      clustering_coefficient: true
+      clustering_coefficient_norm: true
