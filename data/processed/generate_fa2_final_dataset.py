@@ -12,7 +12,7 @@ same graph list) -- only the trajectory teacher differs.
 Reuses generate_final_dataset.py's build_graph_sample() unmodified for the
 x/edge_index/y/y_traj/y_mean/y_std/k/community fields (same normalization
 convention as the FR dataset -- see the scale-normalization convention's addendum
-on why glide/executor/data.py has to undo it before training). Structural
+on why philayouter/executor/data.py has to undo it before training). Structural
 encodings (lap_pe, eigvals, rrwp_node, rrwp_edge, fiedler_se) are NOT
 recomputed: they depend only on graph topology, which is identical to the
 FR dataset's, so they're copied across by graph_idx instead of paying for a

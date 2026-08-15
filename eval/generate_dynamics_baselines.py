@@ -66,7 +66,7 @@ def main():
     # same split as score_predictions uses: reuse the executor loader's split
     import sys
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from glide.executor.data import load_split
+    from philayouter.executor.data import load_split
 
     full = torch.load(args.dataset_path, weights_only=False)
     gidx_to_src = {int(g.graph_idx): i for i, g in enumerate(full)}

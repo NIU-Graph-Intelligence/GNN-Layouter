@@ -45,8 +45,8 @@ external/
 CLAUDE.md
 
 # Anchored to repo root: these are old flat-layout scratch filenames, not a
-# blanket ban on the basename anywhere in the tree (glide/stage1/train.py,
-# glide/executor/train.py etc. are real package files with the same name).
+# blanket ban on the basename anywhere in the tree (philayouter/stage1/train.py,
+# philayouter/executor/train.py etc. are real package files with the same name).
 /train.py
 /test.py
 /fr_pytorch.py
@@ -59,10 +59,8 @@ CLAUDE.md
 models/
 training/
 
-# --- Retired paper-pipeline governance. The paper lives in a separate repo
-# (graphvis-light-survey, authoritative copy on the laptop); these files were
-# the paper-writing record that used to live inside this code repo. They are
-# kept on disk for reference but must not be tracked by the fresh repo.
+# Paper drafts and experiment-tracking notes are maintained in a separate
+# repository, not this one.
 paper/
 result.md
 BASELINES.md
@@ -71,8 +69,8 @@ AGENTS.md
 docs/
 configs/experiments.yaml
 
-# Infrastructure scripts tied to the old lancer / work-dir workflow.
-# The repo no longer assumes results are written into a shared work dir.
+# Scripts for syncing from a specific internal training server — not
+# meaningful outside that setup.
 scripts/sync_lancer_assets.sh
 scripts/sync_lancer_baselines.sh
 scripts/monitor_training.sh

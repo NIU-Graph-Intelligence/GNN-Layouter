@@ -39,7 +39,7 @@ from eval.metrics import (                                    # noqa: E402
     adjacency_from_edge_index, denormalize, fr_forces,
     procrustes_mse, residual_force, rollout_error,
 )
-from glide.executor.data import load_split                     # noqa: E402
+from philayouter.executor.data import load_split                     # noqa: E402
 
 
 def check_procrustes():

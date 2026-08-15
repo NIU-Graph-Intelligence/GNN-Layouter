@@ -1,6 +1,6 @@
 # eval/predictions — the model-agnostic prediction format
 
-The models live in mutually incompatible environments (GLIDE needs torch+PyG;
+The models live in mutually incompatible environments (Φ-layouter needs torch+PyG;
 DeepDrawing and SmartGD need torch+PyG; GND needs torch 2.2.1+DGL and cannot
 coexist with the others). No single process can import them all, so evaluation
 is split:
@@ -33,7 +33,7 @@ Each model outputs in its own frame, and the scorer must be told which:
 
 | model | frame | scoring implication |
 |---|---|---|
-| GLIDE, ablation B | normalized FR frame (shares `y_mean`/`y_std`) | scale is anchored; SO(2) is meaningful |
+| Φ-layouter, ablation B | normalized FR frame (shares `y_mean`/`y_std`) | scale is anchored; SO(2) is meaningful |
 | DeepDrawing, GND-FR | arbitrary scale | trained with scale-invariant Procrustes — **must** be scored scale-fitted, and Φ needs a scale fit first |
 | SmartGD, GND-stress | stress-optimal scale | never saw FR; excluded from the fidelity table |
 

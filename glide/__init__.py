@@ -1,2 +1,0 @@
-"""GLIDE model package."""
-

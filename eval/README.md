@@ -2,7 +2,7 @@
 
 Turns model layout predictions into results: **quantitative metrics** (one JSON per model plus a
 combined comparison table) and a **qualitative figure** (models side by side vs the ground truth).
-Every model — GLIDE and all baselines — is scored by the same code, so no comparison is confounded
+Every model — Φ-layouter and all baselines — is scored by the same code, so no comparison is confounded
 by two slightly different metric definitions.
 
 ```
@@ -30,7 +30,7 @@ bash install.sh && source .venv/bin/activate
 Scoring reads FR ground-truth layouts from it and joins predictions by each graph's index.
 
 **3. Prediction files** — one `.npz` per model in `eval/predictions/`. Each baseline writes its own
-via the `dump_predictions.py` in that baseline's repo; GLIDE's executor writes its own. Typical
+via the `dump_predictions.py` in that baseline's repo; Φ-layouter's executor writes its own. Typical
 set: an executor run, `ablationB`, `deepdrawing`, `gnd_fr`, `gnd_stress`, `smartgd`, `coregd`,
 `dnn2`.
 
@@ -44,7 +44,7 @@ set: an executor run, `ablationB`, `deepdrawing`, `gnd_fr`, `gnd_stress`, `smart
 | `source_indices` | int64 `[G]` | each graph's index in the dataset list |
 | `n_nodes` | int64 `[G]` | node count per graph (splits `positions`) |
 | `positions` | float32 `[Σn, 2]` | final predicted layout, graphs concatenated in order |
-| `trajectory` | float32 `[T, Σn, 2]` | *optional* — per-step layout; iterative models (GLIDE) only |
+| `trajectory` | float32 `[T, Σn, 2]` | *optional* — per-step layout; iterative models (Φ-layouter) only |
 | `meta` | JSON string | `{"name":…, "scale_free": bool, …}` |
 
 `scale_free: true` marks a model whose output scale is arbitrary (all baselines); the scorer
@@ -106,7 +106,7 @@ python eval/make_qualitative_figure.py --models smartgd gnd_fr --indices 76 4503
 Produces one figure (`visualizations/qualitative.png` by default, override with `--out`): rows are
 graphs, columns are FR ground truth followed by each chosen model, nodes coloured by community.
 Every prediction is Procrustes-aligned to FR so the panels are directly comparable. Omit
-`--indices` to auto-pick graphs spread across sizes; column order is fixed (baselines, then GLIDE
+`--indices` to auto-pick graphs spread across sizes; column order is fixed (baselines, then Φ-layouter
 last) so it reads left-to-right as "… vs ours".
 
 ---

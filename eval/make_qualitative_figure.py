@@ -51,13 +51,13 @@ DEFAULT_OUT = os.path.join(ROOT, "visualizations/qualitative.png")
 
 # Pretty labels for known stems; unknown stems fall back to the stem itself.
 LABELS = {
-    "vo2": "GLIDE (ours)", "ablationB": "Ablation (endpoint-only)",
+    "vo2": "Φ-layouter (ours)", "ablationB": "Ablation (endpoint-only)",
     "deepdrawing": "DeepDrawing", "gnd_fr": "GND (FR-sup.)",
     "gnd_stress": "GND (stress)", "smartgd": "SmartGD",
-    "coregd": "CoRe-GD", "dnn2": "(DNN)²", "motion_a10": "GLIDE +L_motion",
+    "coregd": "CoRe-GD", "dnn2": "(DNN)²", "motion_a10": "Φ-layouter +L_motion",
 }
 # Preferred left-to-right order for any known stems that are shown (others go
-# after these, alphabetically); GLIDE is forced last so it reads "... vs ours".
+# after these, alphabetically); Φ-layouter is forced last so it reads "... vs ours".
 PREFERRED = ["deepdrawing", "gnd_fr", "gnd_stress", "dnn2", "coregd", "smartgd"]
 
 PALETTE = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3",
@@ -71,13 +71,13 @@ def discover(pred_dir):
 
 
 def order_models(selected):
-    """FR-free ordering: known PREFERRED first, unknowns alphabetical, GLIDE last."""
+    """FR-free ordering: known PREFERRED first, unknowns alphabetical, Φ-layouter last."""
     sel = list(selected)
-    glide = [m for m in sel if m in ("vo2",)]
-    rest = [m for m in sel if m not in glide]
+    ours = [m for m in sel if m in ("vo2",)]
+    rest = [m for m in sel if m not in ours]
     known = [m for m in PREFERRED if m in rest]
     unknown = sorted(m for m in rest if m not in PREFERRED)
-    return known + unknown + glide
+    return known + unknown + ours
 
 
 def menu(stems):

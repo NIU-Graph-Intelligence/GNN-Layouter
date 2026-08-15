@@ -1,13 +1,5 @@
 # PyTorch and PyG are installed separately by install.sh so the CUDA wheel can
-# be selected explicitly. These are the remaining GLIDE runtime dependencies.
-transformers==5.8.0
-accelerate==1.13.0
-peft==0.19.1
-safetensors==0.7.0
-tokenizers==0.22.2
-huggingface_hub==1.17.0
-bitsandbytes==0.49.2
-
+# be selected explicitly. These are the remaining runtime dependencies.
 numpy==1.26.3
 scipy==1.15.0
 scikit-learn==1.6.0

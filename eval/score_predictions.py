@@ -1,7 +1,7 @@
 """
 score_predictions.py — score model layout predictions against FR ground truth.
 
-Every model (GLIDE, its ablations, and every baseline) is scored through this one
+Every model (Φ-layouter, its ablations, and every baseline) is scored through this one
 script and the shared metrics in `metrics.py`, so no model can get a metric
 variant of its own. Each prediction file is an `.npz` in `eval/predictions/`
 (see the format table at the bottom of this docstring).
@@ -67,7 +67,7 @@ DEFAULT_OUT_DIR = os.path.join(HERE, "results")
 
 # Human-readable labels for known models; unknown names fall back to the stem.
 LABELS = {
-    "vo2": "GLIDE (ours)", "ablationB": "GLIDE ablation (endpoint-only)",
+    "vo2": "Φ-layouter (ours)", "ablationB": "Φ-layouter ablation (endpoint-only)",
     "deepdrawing": "DeepDrawing", "gnd_fr": "GND (FR-supervised)",
     "gnd_stress": "GND (stress)", "smartgd": "SmartGD",
     "coregd": "CoRe-GD", "dnn2": "(DNN)²",
