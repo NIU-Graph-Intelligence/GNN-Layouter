@@ -17,6 +17,11 @@ PYTHON = os.path.join(ROOT, ".venv/bin/python")
 
 MODELS = ["phi1", "mpnn", "gmpnn", "forgetnet"]
 SEEDS  = [7, 2024]
+# gmpnn_seed2024 cut 2026-08-17: training time exceeded the budget and the
+# cell is not needed for the reported seed statistics. Triplet-GMPNN ships
+# with seeds (42, 7).
+SKIP = {("gmpnn", 2024)}
+N_EXPECTED = len(MODELS) * len(SEEDS) - len(SKIP)
 
 GPU_FOR_SEED = {7: "cuda:0", 2024: "cuda:1"}
 
@@ -58,6 +63,8 @@ def main():
     
     for model in MODELS:
         for seed in SEEDS:
+            if (model, seed) in SKIP:
+                continue
             if training_done(model, seed):
                 completed_training.append((model, seed))
             else:
@@ -138,18 +145,18 @@ def main():
         all_done_eval = False
     
     # If everything is ready: write §12
-    if all_done_eval and len(completed_training) == 8:
-        print("\nAll 8 runs evaluated — running eval_and_write_sec12.py")
+    if all_done_eval and len(completed_training) == N_EXPECTED:
+        print(f"\nAll {N_EXPECTED} runs evaluated — running eval_and_write_sec12.py")
         r = subprocess.run([PYTHON, "scripts/eval_and_write_sec12.py"],
                            cwd=ROOT, capture_output=True, text=True)
         print(r.stdout[-2000:])
         if r.returncode != 0:
             print(f"ERROR: {r.stderr[-500:]}")
     else:
-        remaining = 8 - len(completed_training)
+        remaining = N_EXPECTED - len(completed_training)
         print(f"\n  {remaining} training run(s) still pending. Schedule another wakeup.")
     
-    return all_done_eval and len(completed_training) == 8
+    return all_done_eval and len(completed_training) == N_EXPECTED
 
 
 if __name__ == "__main__":

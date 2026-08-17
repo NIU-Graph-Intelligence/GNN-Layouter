@@ -384,23 +384,30 @@ def fr_step(pos: np.ndarray, edges: np.ndarray, k: float, temperature: float,
             theta: float = 0.7, eps: float = 0.01, backend: str = "jit") -> np.ndarray:
     """One full FR step with Barnes-Hut repulsion; attraction exact over E.
 
-    edges: [2, E] (src, dst) adjacency. Mirrors NetworkX/our generator
-    convention: displacement = sum repulsion + sum attraction, capped by the
-    temperature on the total displacement.
+    edges: [2, E] may be bidirectional (both (u,v) and (v,u)) or undirected
+    (each pair once).  The attraction term deduplicates to unique undirected
+    pairs before summing so the formula is correct in both cases.
+    displacement = repulsion + attraction, capped by temperature.
     """
     disp = fr_repulsion_barnes_hut(pos, k, theta=theta, eps=eps, backend=backend)
 
-    src, dst = edges[0], edges[1]
-    ex = pos[src] - pos[dst]                      # [E, 2]
+    # Deduplicate to unique undirected edges so each pair is counted once.
+    # Fix (R1-v2, 2026-08-17): original ex = pos[src]-pos[dst] was wrong-sign
+    # (repulsive).  Correct: ex = pos[dst]-pos[src] (toward dst = attractive).
+    e_sorted = np.sort(np.stack([edges[0], edges[1]], axis=1), axis=1)
+    _, uniq_idx = np.unique(e_sorted, axis=0, return_index=True)
+    src_u = e_sorted[uniq_idx, 0]
+    dst_u = e_sorted[uniq_idx, 1]
+    ex = pos[dst_u] - pos[src_u]                   # toward dst
     d = np.linalg.norm(ex, axis=1)
     d = np.maximum(d, eps)
     c = d / k
     ux = ex[:, 0] / d
     uy = ex[:, 1] / d
-    np.add.at(disp[:, 0], src, c * ux)
-    np.add.at(disp[:, 1], src, c * uy)
-    np.add.at(disp[:, 0], dst, -c * ux)
-    np.add.at(disp[:, 1], dst, -c * uy)
+    np.add.at(disp[:, 0], src_u,  c * ux)          # pull src toward dst
+    np.add.at(disp[:, 1], src_u,  c * uy)
+    np.add.at(disp[:, 0], dst_u, -c * ux)          # pull dst toward src
+    np.add.at(disp[:, 1], dst_u, -c * uy)
 
     length = np.linalg.norm(disp, axis=1)
     length = np.where(length < eps, 0.1, length)

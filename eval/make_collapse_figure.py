@@ -8,7 +8,7 @@ the panels are directly comparable. Coincident pairs (positions within 1e-6 in
 the shared frame) are ringed in red in the GND panel and counted in the title.
 
 Usage:
-    cd /home/lei/work/GNN-Layouter
+    cd "$(dirname "$0")/.."
     .venv/bin/python eval/make_collapse_figure.py --out eval/results/fig_collapse_match.png
 """
 

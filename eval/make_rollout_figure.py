@@ -10,7 +10,7 @@ the Phi_1 rollout. Model panels are Procrustes-aligned to the teacher at the
 same step, exactly as eval.metrics credits the fidelity metric.
 
 Usage:
-    cd /home/lei/work/GNN-Layouter
+    cd "$(dirname "$0")/.."
     .venv/bin/python eval/make_rollout_figure.py \\
         --checkpoint checkpoints/phi1_v1/executor_best.pt \\
         --dataset_path data/processed/comm_5k_v2_with_encodings.pt \\

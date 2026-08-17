@@ -10,7 +10,7 @@ Single-column width: two panels per row read better at columnwidth than three
 panels per row do at textwidth once you're down to a 36-node graph.
 
 Usage:
-    cd /home/lei/work/GNN-Layouter
+    cd "$(dirname "$0")/.."
     .venv/bin/python eval/make_conditioning_figure.py --out eval/results/fig_conditioning_match.png
 """
 

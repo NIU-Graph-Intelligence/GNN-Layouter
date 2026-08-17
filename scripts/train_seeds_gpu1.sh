@@ -1,7 +1,7 @@
 #!/bin/bash
 # GPU 1 chain: mpnn_seed7, forgetnet_seed7, mpnn_seed2024, forgetnet_seed2024
 set -e
-cd /home/lei/work/GNN-Layouter
+cd "$(dirname "$0")/.."
 source .venv/bin/activate
 
 echo "=== mpnn_seed7 starting $(date) ===" | tee checkpoints/mpnn_seed7_progress.log
@@ -36,4 +36,4 @@ python -m philayouter.executor.train_forgetnet \
     2>&1 | tee checkpoints/forgetnet_seed2024_progress.log
 echo "=== forgetnet_seed2024 done $(date) ===" >> checkpoints/forgetnet_seed2024_progress.log
 
-echo "=== GPU1 ALL DONE $(date) ===" >> /home/lei/work/GNN-Layouter/checkpoints/gpu1_chain_done.log
+echo "=== GPU1 ALL DONE $(date) ===" >> checkpoints/gpu1_chain_done.log
