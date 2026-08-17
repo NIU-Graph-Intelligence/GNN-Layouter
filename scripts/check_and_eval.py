@@ -103,7 +103,8 @@ def main():
     for model, seed in completed_training:
         ep = extrap_path(model, seed)
         ckpt = ckpt_path(model, seed)
-        if not os.path.exists(ep) or os.path.getsize(ep) == 0:
+        with open(ep) as _f: content = _f.read() if os.path.exists(ep) else ""
+        if not os.path.exists(ep) or os.path.getsize(ep) == 0 or content.startswith("PENDING"):
             dev = GPU_FOR_SEED.get(seed, "cuda:0")
             print(f"\nStep extrapolation {model}_seed{seed}...")
             r = subprocess.run(
