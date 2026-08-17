@@ -48,6 +48,7 @@ def parse_args():
 
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--split_seed", type=int, default=42)
     parser.add_argument("--log_every", type=int, default=1)
     return parser.parse_args()
 
@@ -104,7 +105,7 @@ def main():
     device = torch.device(args.device)
     print(f"Using device: {device}")
 
-    split = load_split(args.dataset_path, seed=args.seed)
+    split = load_split(args.dataset_path, seed=args.split_seed)
     train_graphs, val_graphs = split["train"], split["val"]
     if args.max_graphs is not None:
         train_graphs = train_graphs[: args.max_graphs]
