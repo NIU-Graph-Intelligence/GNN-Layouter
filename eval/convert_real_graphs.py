@@ -19,10 +19,16 @@ Usage:
 import argparse
 import json
 import os
+import sys
 
 import numpy as np
 import scipy.sparse as sp
 import torch
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+sys.path.insert(0, ROOT)
 
 from eval.score_large_layout import load_graph
 

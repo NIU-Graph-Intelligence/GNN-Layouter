@@ -77,7 +77,8 @@ def load_graph(path: str):
         else:
             raise ValueError(f"expected [2,E] edge_index tensor, got {ei.shape}")
     elif ext == ".mtx":
-        m = sp.io.mmread(path)
+        import scipy.io as sio
+        m = sio.mmread(path)
         if sp.issparse(m):
             m = m.tocoo()
             rows, cols = m.row.astype(np.int64), m.col.astype(np.int64)
