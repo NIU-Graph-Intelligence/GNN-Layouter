@@ -11,11 +11,10 @@ topological edges, repulsion over a per-step geometric kNN graph, decaying tempe
 conditioning, equivariant displacement readout). It is rotation/translation-equivariant by
 construction, not by training.
 
-> **Note.** `philayouter/stage1/` contains the structural-encoding modules the executor
-> reuses: `philayouter/stage1/gst/{encodings,sign_net}.py` and
-> `philayouter/stage1/preprocess_encodings.py`. An endpoint-only supervision control
-> (vs. the default per-step supervision) is available via
-> `philayouter/executor/train.py --supervision endpoint`.
+This is the code for the paper *Rethinking Graph Data Visualization: Learning the Operator,
+Not the Layout*. [`PROTOCOL.md`](PROTOCOL.md) records the parameters behind every reported
+number: the graph generators and their seeds, the three teachers' constants, the model and
+optimizer configuration, and the rollout classification thresholds.
 
 This README takes you from **nothing to a trained executor and a scored evaluation**.
 
@@ -36,8 +35,8 @@ Activate it in every new terminal:
 source .venv/bin/activate
 ```
 
-To verify the canonical dataset and checkpoints are present (checksums are hardcoded in the
-script, not referenced from an external registry):
+Once the dataset has been generated (below), this checks it against the SHA-256 sums the
+reported runs used, hardcoded in the script rather than fetched from a registry:
 
 ```bash
 .venv/bin/python scripts/verify_setup.py
@@ -118,18 +117,23 @@ python -m philayouter.executor.evaluate --checkpoint checkpoints/phi1_v1/executo
 Reports teacher fidelity on held-out test graphs and a step-extrapolation rollout (how far the
 learned operator can be rolled out past the trained horizon).
 
-### Run the shared evaluation harness
+### Score it
 
-`eval/` is the single source of truth for reported metrics, shared with every baseline:
+`eval/metrics.py` holds every metric definition, so a model and everything it is compared
+against are scored by one implementation:
 
 ```bash
 .venv/bin/python eval/validate_metrics.py --dataset_path data/processed/comm_5k_v2_with_encodings.pt
+.venv/bin/python eval/dump_executor_predictions.py --checkpoint checkpoints/phi1_v1/executor_best.pt --name phi1_v1
 .venv/bin/python eval/score_predictions.py --all
 ```
 
-Each model dumps predictions to `eval/predictions/<name>.npz` (format documented in
-`eval/predictions/README.md`); `score_predictions.py` scores every model through the same
-`eval/metrics.py`. See [`eval/README.md`](eval/README.md).
+A model writes its layouts to `eval/predictions/<name>.npz` in one model-agnostic format
+(documented in [`eval/predictions/README.md`](eval/predictions/README.md)), and
+`score_predictions.py` scores whatever it finds there. Predictions are dumped rather than
+computed in place because the published comparison methods run in mutually incompatible
+environments — their `.npz` files are produced in their own repositories, not here. See
+[`eval/README.md`](eval/README.md).
 
 ---
 
@@ -162,11 +166,15 @@ philayouter/                 Φ-layouter Python package
     evaluate.py             fidelity + step extrapolation
     benchmark*.py           timing / wall-clock harness
     check_*.py              numeric verification scripts
-  stage1/                   structural encodings reused by the executor
-                            (gst/{encodings,sign_net}.py) + preprocess_encodings.py
+  stage1/                   structural encodings reused by the executor: Laplacian PE
+                            through a sign-invariant network, RRWP (gst/), and
+                            preprocess_encodings.py, which caches them onto a dataset
 
-eval/                       shared evaluation harness (metrics, scoring, figures)
+eval/                       evaluation harness (metrics, scoring, figures)
+PROTOCOL.md                 the parameters behind the reported numbers
 ```
 
-> **Scope.** This repository contains code, data-generation scripts, and the evaluation
-> harness — not paper drafts or experiment-tracking notes, which are maintained separately.
+> **Scope.** Code, data-generation scripts, and the evaluation harness. The generated
+> datasets, the recorded teacher trajectories, and the trained checkpoints are too large for
+> git and are not tracked here — the pipeline above regenerates them, and `PROTOCOL.md` fixes
+> the parameters they were produced with.

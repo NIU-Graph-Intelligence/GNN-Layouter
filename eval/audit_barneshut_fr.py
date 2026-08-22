@@ -1,5 +1,5 @@
 """
-eval/audit_barneshut_fr.py  --  R1-v2 Task 2: Barnes-Hut/exact-FR compatibility audit.
+eval/audit_barneshut_fr.py  --  Barnes-Hut/exact-FR compatibility audit.
 
 Validates that the Barnes-Hut FR path (philayouter/executor/barneshut.py) is
 compatible with the exact FR teacher (data/processed/generate_fr_iterations.py)
@@ -155,7 +155,7 @@ def audit_graph(family, n, ei, save_steps=(1, 10, 50)):
 def main():
     families = ["grid", "rgg", "scale_free", "er"]
     n = 1000
-    print(f"R1-v2 Task 2: BH/exact-FR audit  N={n}  theta={THETA}  T={T}")
+    print(f"BH/exact-FR audit  N={n}  theta={THETA}  T={T}")
     print(f"Bug fixed 2026-08-17: wrong-sign attraction + edge deduplication in barneshut.py\n")
 
     all_records = []
@@ -176,7 +176,7 @@ def main():
 
     out = OUT_DIR / "bh_audit.json"
     with open(out, "w") as f:
-        json.dump({"description": "R1-v2 Task 2 BH/exact-FR audit (corrected BH)",
+        json.dump({"description": "BH/exact-FR audit (corrected BH)",
                    "bug_fix": "barneshut.py fr_step: wrong-sign attraction (ex=pos_src-pos_dst) "
                               "and missing edge dedup fixed 2026-08-17",
                    "convention": "k_unit_init_raw, executor_k_norm_temperature",

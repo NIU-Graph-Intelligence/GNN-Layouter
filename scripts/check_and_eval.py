@@ -1,6 +1,7 @@
 """
 check_and_eval.py - poll training completion and run incremental eval.
-Designed to be called from ScheduleWakeup; safe to call multiple times.
+Designed for periodic invocation (cron, or a shell loop); safe to call
+multiple times.
 Detects training completion via progress log "done." marker (not just ckpt existence).
 """
 
@@ -110,7 +111,7 @@ def main():
     for model, seed in completed_training:
         ep = extrap_path(model, seed)
         ckpt = ckpt_path(model, seed)
-        with open(ep) as _f: content = _f.read() if os.path.exists(ep) else ""
+        content = open(ep).read() if os.path.exists(ep) else ""
         if not os.path.exists(ep) or os.path.getsize(ep) == 0 or content.startswith("PENDING"):
             dev = GPU_FOR_SEED.get(seed, "cuda:0")
             print(f"\nStep extrapolation {model}_seed{seed}...")
@@ -146,8 +147,8 @@ def main():
     
     # If everything is ready: write §12
     if all_done_eval and len(completed_training) == N_EXPECTED:
-        print(f"\nAll {N_EXPECTED} runs evaluated — running eval_and_write_sec12.py")
-        r = subprocess.run([PYTHON, "scripts/eval_and_write_sec12.py"],
+        print(f"\nAll {N_EXPECTED} runs evaluated — running eval_multiseed.py")
+        r = subprocess.run([PYTHON, "scripts/eval_multiseed.py"],
                            cwd=ROOT, capture_output=True, text=True)
         print(r.stdout[-2000:])
         if r.returncode != 0:

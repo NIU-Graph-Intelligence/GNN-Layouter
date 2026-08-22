@@ -1,15 +1,15 @@
 """
 philayouter/executor/evaluate_compressed.py
 
-Q11 (the experiment queue): quality-vs-k curve for the compressed
+Quality-vs-k curve for the compressed
 executor Phi_k. One forward pass = k algorithm iterations (stride as a
-conditioning input, dial-able at inference per PAPER_PLAN.md §5), so the
+conditioning input, dial-able at inference), so the
 model reaches FR step 50 in ceil(50/k) forwards.
 
 For each candidate stride k, roll the trained Phi_k model out for
 ceil(T/k) forwards and measure Procrustes rollout_error at the T=50 mark
 against the recorded FR trajectory -- the same metric/convention
-evaluate.py uses, so k=1 is directly comparable to Q4/Q5's Phi_1 numbers.
+evaluate.py uses, so k=1 is directly comparable to the Phi_1 numbers.
 Also reports the sequential-depth win: forwards_needed = ceil(T/k).
 
 The honest empirical answer -- including k where quality collapses -- is the
@@ -57,7 +57,7 @@ def quality_vs_k(encoder, model, test_graphs, device, k_list, T=50):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Q11: quality-vs-k curve for Phi_k")
+    parser = argparse.ArgumentParser(description="quality-vs-k curve for Phi_k")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--dataset_path", default="data/processed/comm_5k_v2_with_encodings.pt")
     parser.add_argument("--device", default="cuda")

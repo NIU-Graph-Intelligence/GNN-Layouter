@@ -1,10 +1,11 @@
 """
 philayouter/executor/barneshut.py
 
-Barnes-Hut approximation of the Fruchterman-Reingold step (Q22, PAPER_PLAN
-§7). FR's O(N^2) cost is the all-pairs repulsion term; Barnes-Hut groups
-distant nodes into quadtree cells and replaces each cell by its centre of
-mass when the cell subtends a small angle (theta), giving O(N log N).
+Barnes-Hut approximation of the Fruchterman-Reingold step, the classical
+O(N log N) reference in the wall-clock comparison. FR's O(N^2) cost is the
+all-pairs repulsion term; Barnes-Hut groups distant nodes into quadtree cells
+and replaces each cell by its centre of mass when the cell subtends a small
+angle (theta), giving O(N log N).
 
 Exactly the term it approximates (identical to `fr_single_step` in
 data/processed/generate_fr_iterations.py):
@@ -392,7 +393,7 @@ def fr_step(pos: np.ndarray, edges: np.ndarray, k: float, temperature: float,
     disp = fr_repulsion_barnes_hut(pos, k, theta=theta, eps=eps, backend=backend)
 
     # Deduplicate to unique undirected edges so each pair is counted once.
-    # Fix (R1-v2, 2026-08-17): original ex = pos[src]-pos[dst] was wrong-sign
+    # Fix (2026-08-17): original ex = pos[src]-pos[dst] was wrong-sign
     # (repulsive).  Correct: ex = pos[dst]-pos[src] (toward dst = attractive).
     e_sorted = np.sort(np.stack([edges[0], edges[1]], axis=1), axis=1)
     _, uniq_idx = np.unique(e_sorted, axis=0, return_index=True)

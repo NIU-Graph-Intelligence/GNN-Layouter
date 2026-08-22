@@ -1,14 +1,13 @@
 """
 philayouter/executor/generate_corpus.py
 
-Q12/Q14 (the experiment queue, Lei-decided 2026-08-14): size-extrapolation
-corpus for the central claim. Lei accepted the recommendation that a diverse
-multi-source set is required, with a synthetic fallback if remote downloads
-are blocked (they are on this machine -- both SuiteSparse and Network
-Repository direct links return 404/empty here). This script is that fallback.
+Size-extrapolation corpus for the central claim. A diverse multi-source set
+is required, with a synthetic fallback where remote downloads are blocked
+(both SuiteSparse and Network Repository direct links returned 404/empty on
+the machine these runs were made on). This script is that fallback.
 
 Synthetic families, all sparse-constructed (no dense rand(n,n) -- the machine
-OOM'd on such tests 2026-08-13, recorded in EXPERIMENT_QUEUE.md):
+OOM'd on such tests 2026-08-13):
 
   grid          -- 2D grid (sqrt(N) x sqrt(N)): regular lattice, local
   rgg           -- random geometric graph (connect nodes within radius r):
@@ -21,7 +20,7 @@ OOM'd on such tests 2026-08-13, recorded in EXPERIMENT_QUEUE.md):
 Each family is generated at N = 10^3, 10^4, 10^5, 10^6 as one edge_index
 tensor per (family, size), saved as sparse torch files under data/corpora/.
 Isolating SIZE per family is the clean way to measure size generalization
-(the same topology type at increasing N) -- the actual eval (Q14) then also
+(the same topology type at increasing N) -- the actual eval then also
 crosses FAMILY (train on community 20-50, evaluate at 10^3..10^6 of all four).
 
 Memory-bounded by construction: edge lists only; nothing O(N^2) is materialised.
@@ -122,7 +121,7 @@ FAMILIES = {
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Q12/Q14: size-extrapolation corpus")
+    parser = argparse.ArgumentParser(description="size-extrapolation corpus")
     parser.add_argument("--sizes", type=int, nargs="+", default=[1000, 10000, 100000, 1000000])
     parser.add_argument("--out_dir", default="data/corpora")
     args = parser.parse_args()

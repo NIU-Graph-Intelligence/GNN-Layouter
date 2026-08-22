@@ -1,7 +1,7 @@
-"""make_large_layout_figure.py - Fig for R1.3: Phi-layouter vs sfdp on a single
+"""make_large_layout_figure.py - Phi-layouter vs sfdp on a single
 large graph (grid at N=10^5), rendered legibly by downsampling.
 
-The brief wants one rendering showing the Phi-layouter layout beside sfdp on
+One rendering showing the Phi-layouter layout beside sfdp on
 the same graph at N >= 10^5. The full 10^5-node drawing is a solid block of
 ink, so nodes/edges are downsampled for display; the caption text returned
 states exactly that. Layout coordinates are each panel's own (the two methods

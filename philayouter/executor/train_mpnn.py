@@ -1,7 +1,7 @@
 """
 philayouter/executor/train_mpnn.py
 
-Q20 (the experiment queue): train the MPNN-max Neural Executor baseline.
+Train the MPNN-max Neural Executor baseline.
 
 IDENTICAL to train.py (same data, same seed-42 split, same per-graph training
 shape, same k-unit normalization, same temperature reconstruction, same loss
@@ -31,7 +31,7 @@ from .structural import StructuralEncoder
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Q20: train the MPNN-max neural executor baseline")
+    parser = argparse.ArgumentParser(description="train the MPNN-max neural executor baseline")
     parser.add_argument("--dataset_path", default="data/processed/comm_5k_v2_with_encodings.pt")
     parser.add_argument("--output_dir", required=True)
 

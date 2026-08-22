@@ -1,7 +1,7 @@
 """
 philayouter/executor/train_forgetnet.py
 
-Q26 (the experiment queue): train the G-ForgetNet gated-history executor.
+Train the G-ForgetNet gated-history executor.
 
 Same data / split / loss / k-unit normalization as train.py, with ONE
 structural difference: the hidden state is carried across steps within a
@@ -31,7 +31,7 @@ from .structural import StructuralEncoder
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Q26: train the G-ForgetNet gated-history executor")
+    parser = argparse.ArgumentParser(description="train the G-ForgetNet gated-history executor")
     parser.add_argument("--dataset_path", default="data/processed/comm_5k_v2_with_encodings.pt")
     parser.add_argument("--output_dir", required=True)
 

@@ -136,7 +136,7 @@ def build_graph_sample(
     """
     nodes = sorted(G.nodes())
     # Extract community label per node in sorted order. Non-community graph
-    # families (e.g. the scale-free second family, Q8) carry no such attribute;
+    # families (e.g. the scale-free second family) carry no such attribute;
     # default to a single community (label 0) for them so the schema stays
     # identical across families.
     community = torch.tensor(

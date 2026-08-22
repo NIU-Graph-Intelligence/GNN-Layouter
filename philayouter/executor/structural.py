@@ -1,7 +1,7 @@
 """
 philayouter/executor/structural.py
 
-Structural embeddings for the equivariant executor (PAPER_PLAN.md §4, Q3):
+Structural embeddings for the equivariant executor:
 computed once per graph from topology alone (Laplacian PE through SignNet,
 random-walk features) and cached for the whole rollout. Only the geometric
 neighbourhood, state features (pos, tau), and the readout are recomputed per
@@ -21,7 +21,7 @@ from philayouter.stage1.gst.sign_net import SignNet
 
 
 def _laplacian_eigvecs_fast(edge_index: torch.Tensor, num_nodes: int, k: int) -> torch.Tensor:
-    """Plain-Lanczos Laplacian eigenvectors (Q13 large-N path).
+    """Plain-Lanczos Laplacian eigenvectors (the large-N path).
 
     Same spectrum target as stage1's shift-invert mode (the k smallest
     non-trivial eigenpairs) but computed with `eigsh(which='SM')` and no
@@ -59,7 +59,7 @@ def compute_rrwp_diag(edge_index: torch.Tensor, num_nodes: int, k: int) -> torch
     compute_rrwp builds. Diagonal of M^t for t=1..k, M = D^{-1}A
     row-normalised, matching stage1's definition.
 
-    IMPORTANT (Q13/Q14 finding, 2026-08-13): this is NOT scalable past
+    IMPORTANT (measured 2026-08-13): this is NOT scalable past
     N~10^4. Random-walk probabilities mix fast on well-connected graphs --
     measured: at N=10^4 the sparse power M^t reaches 100% density by t=8
     (a 10000x10000 dense float32 matrix = 400 MB, and the matmul cost
@@ -67,9 +67,9 @@ def compute_rrwp_diag(edge_index: torch.Tensor, num_nodes: int, k: int) -> torch
     effectively infeasible at N=10^5. The stage1 dense version has the same
     wall. This is a MATH limit of random-walk PEs, not an implementation
     artifact -- replacing it (bounded-walk sampling for the diagonal, or a
-    different positional encoding) changes the paper's §4 structural
-    encodings and is Lei's call, flagged as the Q14 blocker in
-    the experiment queue. For benchmark timing at N>10^4 use
+    different positional encoding) changes the paper's structural
+    encodings, so it is left as a stated limit rather than silently swapped.
+    For benchmark timing at N>10^4 use
     `--skip_encoding` (random node_feat) rather than paying this wall.
     """
     import numpy as np
@@ -124,7 +124,7 @@ class StructuralEncoder(nn.Module):
                 nn.SiLU(),
             )
         else:
-            # LapPE-only (Q14 structural-encoding decision, 2026-08-13): the
+            # LapPE-only (the large-N structural-encoding path): the
             # RRWP branch is not created at all, so there is no wasted
             # parameter and no possibility of a large-N path silently
             # depending on it. SignNet output is already [N, out_dim]; the
@@ -137,9 +137,9 @@ class StructuralEncoder(nn.Module):
     def forward(self, edge_index: torch.Tensor, num_nodes: int) -> torch.Tensor:
         """General path: compute raw eigenvectors/RRWP from scratch. Use for
         any graph that doesn't already have them cached (new graphs at
-        eval/large-N time -- Q13 onward).
+        eval/large-N time).
 
-        `fast_eigsh=True` (Q13 benchmark / large-N eval only): uses a plain
+        `fast_eigsh=True` (benchmark / large-N eval only): uses a plain
         Lanczos `eigsh(which='SM')` for the Laplacian spectrum instead of the
         shift-invert mode in philayouter/stage1/gst/encodings.py. Verified identical
         results (SM-no-shift vs shift-invert agree to float noise on the same
@@ -149,7 +149,7 @@ class StructuralEncoder(nn.Module):
 
         `use_rrwp=False`: LapPE-only. RRWP is never computed, so this path is
         scalable to arbitrary N (eigsh is the only cost, ~7s at N=10^5). This
-        is the Q14-proposed large-N encoding; see EXPERIMENT_QUEUE.md.
+        is the large-N encoding used in the size-extrapolation runs.
         """
         if self.fast_eigsh:
             eigvecs = _laplacian_eigvecs_fast(edge_index, num_nodes, self.lap_k)

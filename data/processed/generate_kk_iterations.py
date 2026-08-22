@@ -5,7 +5,7 @@ Runs a stepped Kamada-Kawai solver and saves every intermediate state,
 mirroring generate_fr_iterations.py / generate_fa2_iterations.py in
 structure and output schema.
 
-Design decision (flagged, not glossed over, when Q6 was picked up): unlike
+Design decision (flagged, not glossed over): unlike
 FR and FA2, classical Kamada-Kawai has no fixed-step iteration at all --
 networkx's kamada_kawai_layout is a single black-box scipy.optimize call
 over the whole stress function, returning only the endpoint. To get a
@@ -17,7 +17,7 @@ real substitution of solution method, not a detail: it changes convergence
 behavior and possibly the fixed point reached vs. scipy's BFGS. It's
 defensible here because it's what makes KK an "operator" at all in this
 paper's sense (X_{t+1} = Phi(G, X_t, tau_t)), and because it keeps KK in the
-same state-space/temperature convention as FR and FA2 (PAPER_PLAN.md §6) --
+same state-space/temperature convention as FR and FA2 --
 but it is a paper-relevant modeling choice, not an implementation detail, and
 should be described as such wherever this dataset is used.
 

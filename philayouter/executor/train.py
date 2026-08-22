@@ -1,7 +1,7 @@
 """
 philayouter/executor/train.py
 
-Q4 (the experiment queue): train Phi_1, the equivariant executor, on
+Train Phi_1, the equivariant executor, on
 the existing comm_5k_v2_with_encodings.pt trajectories -- no new data
 collection, reusing the FR trajectories already validated to cosine 1.0
 against FR's own update direction (eval/validate_metrics.py).
@@ -38,7 +38,7 @@ from .structural import StructuralEncoder
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Q4: train the equivariant executor (Phi_1)")
+    parser = argparse.ArgumentParser(description="train the equivariant executor (Phi_1)")
     parser.add_argument("--dataset_path", default="data/processed/comm_5k_v2_with_encodings.pt")
     parser.add_argument("--output_dir", required=True)
 
@@ -48,16 +48,16 @@ def parse_args():
     parser.add_argument("--rw_k", type=int, default=16)
     parser.add_argument("--use_rrwp", type=lambda s: s.lower() not in ("0", "false", "no"),
                         default=True, help="include RRWP in structural encodings; "
-                        "set 0/false for the LapPE-only ablation (Q14 structural-encoding decision)")
+                        "set 0/false for the LapPE-only ablation")
     parser.add_argument("--use_tau", type=lambda s: s.lower() not in ("0", "false", "no"),
                         default=True, help="condition the readout on temperature; "
-                        "set 0/false for the no-temperature ablation (Q15)")
+                        "set 0/false for the no-temperature ablation")
     parser.add_argument("--use_geo_mp", type=lambda s: s.lower() not in ("0", "false", "no"),
                         default=True, help="include the geometric kNN message passing; "
-                        "set 0/false for the no-geometric-rewiring ablation (Q16)")
+                        "set 0/false for the no-geometric-rewiring ablation")
     parser.add_argument("--use_equiv_readout", type=lambda s: s.lower() not in ("0", "false", "no"),
                         default=True, help="equivariant readout (scalar * unit vector); "
-                        "set 0/false for the non-equivariant-readout ablation (Q17)")
+                        "set 0/false for the non-equivariant-readout ablation")
 
     parser.add_argument("--supervision", type=str, default="steps",
                         choices=["steps", "endpoint"],
@@ -86,7 +86,7 @@ def graph_loss(encoder, model, data, device, supervision: str = "steps"):
     iteration for this graph, in the k-normalized frame.
 
     `supervision="endpoint"` is the no-hint control (the executor's own
-    ablation B, PAPER_PLAN.md §8 row 1): keep the same teacher-forced step
+    ablation B): keep the same teacher-forced step
     loop and the same per-step inputs, but supervise only the final step's
     displacement. Intermediate states are still provided as inputs (exactly
     as in the full model) but contribute no loss, so the model receives no

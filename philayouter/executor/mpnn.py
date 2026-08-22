@@ -1,7 +1,7 @@
 """
 philayouter/executor/mpnn.py
 
-Q20 (the experiment queue): MPNN-max Neural Executor baseline
+MPNN-max Neural Executor baseline
 (Velicovic et al. 2020, "Neural Execution of Graph Algorithms", ICLR 2020).
 
 The cleanest NAR baseline: one algorithm step per forward pass, the predicted
@@ -11,7 +11,7 @@ readout and NO geometric kNN rewiring -- trained on the same FR/FA2/KK
 trajectories, same state/output encoding, same teacher-forcing exposure as
 the EquivariantExecutor.
 
-Why it exists (PAPER_PLAN.md §9): it isolates what algorithmic alignment
+Why it exists: it isolates what algorithmic alignment
 buys. The equivariant executor's hypothesis class CONTAINS the algorithm
 (constructionally), which is what makes step supervision sample-efficient. A
 plain MPNN on the same data tests whether alignment is the reason -- if the
@@ -60,7 +60,7 @@ class _MaxMP(MessagePassing):
 
 
 class MpnnExecutor(nn.Module):
-    """Unaligned neural executor (Q20). One step X_{t+1}=X_t + dX, dX from a
+    """Unaligned neural executor. One step X_{t+1}=X_t + dX, dX from a
     plain MPNN with max aggregation; no equivariant readout, no geometric
     rewiring, no temperature conditioning of the readout."""
 

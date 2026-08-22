@@ -1,7 +1,7 @@
 """
 philayouter/executor/forgetnet.py
 
-Q26 (the experiment queue): G-ForgetNet executor baseline (Bohde et al.
+G-ForgetNet executor baseline (Bohde et al.
 2024, "On the Markov Property of Neural Algorithmic Reasoning", ICLR 2024).
 
 Three variants on the same data:
@@ -27,7 +27,7 @@ A forget gate r_v = sigmoid(W_r [m_v, s_v]) modulates the message read:
   m_v = max_u edge_mlp(h_u, r_v * s_u ...)
 
 This is the "gated-history" variant (c): the memory is retained unless the
-gate closes it. The contrast with (b) is the Q26 control.
+gate closes it. That contrast with (b) is what this baseline controls for.
 
 Training passes the hidden state across steps within a graph's rollout
 (h_state from step t feeds step t+1), which is the one structural difference

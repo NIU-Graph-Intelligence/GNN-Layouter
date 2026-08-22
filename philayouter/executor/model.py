@@ -2,7 +2,7 @@
 philayouter/executor/model.py
 
 Equivariant executor for a force-directed layout algorithm -- one learned
-step of X_{t+1} = Phi(G, X_t, tau_t) (PAPER_PLAN.md §2, §4).
+step of X_{t+1} = Phi(G, X_t, tau_t).
 
 Every term of the FR update maps onto one component:
 
@@ -65,7 +65,7 @@ class _EdgeContextMP(MessagePassing):
             # Chunked aggregation: process edges in blocks and accumulate with
             # index_add, so peak memory is bounded by (chunk * message dim)
             # instead of (E * message dim). Needed for N ~ 10^6 where E = N*k_geo
-            # materializes 10^7+ per-edge messages (Q22/Q14 memory wall).
+            # materializes 10^7+ per-edge messages (the large-N memory wall).
             out = torch.zeros(n, self.edge_mlp[0].out_features, device=h.device)
             row, col = edge_index
             for s in range(0, col.shape[0], chunk):
@@ -85,10 +85,10 @@ class _EdgeContextMP(MessagePassing):
 class EquivariantExecutor(nn.Module):
     """One learned step of the layout operator. See module docstring.
 
-    `use_stride=True` enables the Phi_k compression conditioning (Q10,
-    PAPER_PLAN.md §5): `stride` (how many algorithm steps one forward pass
+    `use_stride=True` enables the Phi_k compression conditioning:
+    `stride` (how many algorithm steps one forward pass
     covers) becomes an extra scalar argument to phi. It must be False for
-    Phi_1 (Q4/Q5/Q7 checkpoints were trained with the smaller phi input) --
+    Phi_1 (single-step checkpoints were trained with the smaller phi input) --
     changing phi_in_dim would silently invalidate those state dicts.
     """
 
@@ -115,7 +115,7 @@ class EquivariantExecutor(nn.Module):
         # Chunk size for per-edge processing (message passing AND the readout).
         # None = original monolithic path (bit-identical numerics for existing
         # checkpoints); an int bounds peak GPU memory to O(chunk) edge messages
-        # so N=10^6 runs without the 24 GB OOM (Q22/Q14 memory wall).
+        # so N=10^6 runs without the 24 GB OOM (the large-N memory wall).
         self.chunk = chunk
 
         self.node_encoder = nn.Linear(node_feat_dim, hidden_dim)
@@ -131,7 +131,7 @@ class EquivariantExecutor(nn.Module):
         phi_in_dim = 2 * hidden_dim + 1 + 2 + (1 if use_tau else 0) + hidden_dim
         if use_stride:
             phi_in_dim += 1
-        # Q17 ablation (non-equivariant readout): phi outputs a per-edge
+        # Ablation (non-equivariant readout): phi outputs a per-edge
         # [E, 2] displacement VECTOR instead of a scalar times the unit
         # vector. The model can then learn arbitrary directions, so the
         # equivariance guarantee is deliberately broken. Same phi_in_dim.
@@ -149,7 +149,7 @@ class EquivariantExecutor(nn.Module):
         pos: torch.Tensor,              # [N, 2] current positions, k-normalized
         tau: torch.Tensor,              # scalar, [N] or [N, 1]: current temperature, k-normalized
         teacher_id: torch.Tensor = None,  # scalar or [N] long: which teacher/algorithm (c)
-        stride: torch.Tensor = None,    # scalar or [N]: steps compressed into this forward pass (Phi_k, Q10)
+        stride: torch.Tensor = None,    # scalar or [N]: steps compressed into this forward pass (Phi_k)
     ) -> torch.Tensor:                  # [N, 2] displacement dX
         n = pos.shape[0]
         device = pos.device
@@ -178,7 +178,7 @@ class EquivariantExecutor(nn.Module):
             edge_index_geo = build_knn_graph(pos, k=min(self.k_geo, n - 1), backend=self.knn_backend)
             h_repl = self.repulsion_mp(h0, edge_index_geo, pos, chunk=chunk)
         else:
-            # Q16 ablation (no geometric rewiring): message passing on the
+            # Ablation (no geometric rewiring): message passing on the
             # topological E only. No kNN is built; repulsion gets zero
             # contribution and is_geo is False everywhere (phi still sees the
             # dimension, so phi_in_dim is unchanged and the checkpoint layout
@@ -192,7 +192,7 @@ class EquivariantExecutor(nn.Module):
         row, col, is_topo, is_geo = merge_edge_sets(edge_index_topo, edge_index_geo, n)
         # row = source u, col = target v; dX[v] accumulates contributions from u.
         # Chunked readout: phi_in concatenation is O(E * phi_in_dim), which is
-        # the 24 GB OOM allocation at N=10^6 (Q22). Process edge blocks instead.
+        # the 24 GB OOM allocation at N=10^6. Process edge blocks instead.
 
         c_all = self.teacher_embed(teacher_id[col])  # [E, hidden_dim] (cached; small)
 
@@ -213,10 +213,10 @@ class EquivariantExecutor(nn.Module):
             phi_in.append(c_all[lo:hi])
             if self.use_stride:
                 phi_in.append(stride[cs])
-            phi = self.phi(torch.cat(phi_in, dim=-1))  # [E', 1] or [E', 2] (Q17)
+            phi = self.phi(torch.cat(phi_in, dim=-1))  # [E', 1] or [E', 2] (ablation)
             if self.use_equiv_readout:
                 return unit * phi  # equivariant by construction
-            # Q17 ablation: phi outputs a full displacement vector per edge.
+            # Ablation: phi outputs a full displacement vector per edge.
             return phi
 
         dX = torch.zeros(n, 2, device=device, dtype=pos.dtype)

@@ -5,8 +5,8 @@ Runs ForceAtlas2 step-by-step and saves every intermediate state, mirroring
 generate_fr_iterations.py exactly in structure and output schema so
 generate_final_dataset.py can consume either without modification.
 
-Per PAPER_PLAN.md §6: "FA2 is the same operator form as FR with different
-force laws" -- Barnes-Hut changes how the repulsive sum is computed, not
+FA2 is the same operator form as FR with different force laws:
+Barnes-Hut changes how the repulsive sum is computed, not
 what the state is. This generator keeps FR's exact machinery (grid init,
 linear-cooling temperature schedule, the same
 displacement = displacement_vector * (temperature / ||displacement_vector||)
@@ -24,8 +24,8 @@ Deliberately NOT implemented: Gephi's adaptive global-speed algorithm
 (swinging/traction-based per-iteration speed control, Jacomy et al. 2014
 Algorithm 1). Reusing FR's linear-cooling schedule instead keeps every
 teacher in the same state-space/temperature convention, which is what makes
-multi-teacher conditioning (Q7) cost "almost nothing in formalization"
-(PAPER_PLAN.md §6) -- mismatched per-teacher temperature semantics would
+multi-teacher conditioning cost almost nothing in formalization --
+mismatched per-teacher temperature semantics would
 undercut exactly the thing this generator exists to support.
 
 Output schema: identical to generate_fr_iterations.py's pickle (n_nodes, k,

@@ -1,2 +1,3 @@
-"""Stage 1 Graph Soft-Tokenizer components."""
+"""Structural encodings reused by the executor: Laplacian PE through a
+sign-invariant network, and RRWP."""
 

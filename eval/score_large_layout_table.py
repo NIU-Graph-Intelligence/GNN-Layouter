@@ -1,19 +1,19 @@
 """
 eval/score_large_layout_table.py
 
-R1.2/R1.4: score every saved large layout with the R1.1 sampled scorer and
-assemble the table that goes into result.md §11. Reads the layout manifest
+Score every saved large layout with the sampled scorer and assemble the
+large-N layout-quality table. Reads the layout manifest
 written by generate_large_layouts.py; for each (source, family, size) present
 it runs the scorer in-process and collects stress +/- SE and NP@k +/- SE.
 
 Rows:
-  phi / sfdp / fa2     -- the three R1.2 layout sources (manifest)
+  phi / sfdp / fa2     -- the three layout sources (manifest)
   noop                 -- the executor's k-unit grid initialisation P0 with no
                           rollout: the "is the output trivial" baseline. If the
                           executor's layout is not measurably better than its
                           own starting point, the stress/NP numbers say so.
   phi_randfeat         -- the phi layout produced with random node features
-                          (the R1 run per the original brief's --skip_encoding).
+                          (the run with --skip_encoding).
                           Kept as an explicit ablation: it is NOT the paper's
                           model, which uses LapPE node features.
 

@@ -1,7 +1,7 @@
 """
 philayouter/executor/data.py
 
-Loads Q4 training pairs from the canonical dataset
+Loads training pairs from the canonical dataset
 (comm_5k_v2_with_encodings.pt), reconstructing the raw FR frame and applying
 the k-unit normalization from the scale-normalization convention.
 
@@ -43,8 +43,8 @@ class StepSample(NamedTuple):
     pos_after: torch.Tensor  # [N, 2] k-normalized -- training target
     tau: torch.Tensor  # [N, 1] k-normalized temperature, broadcast per node
     k: float  # sqrt(1/N) for this graph
-    teacher_id: torch.Tensor  # [N] long, which teacher this trajectory came from (Q7)
-    stride: int  # number of algorithm steps compressed into one forward pass (Q10)
+    teacher_id: torch.Tensor  # [N] long, which teacher this trajectory came from
+    stride: int  # number of algorithm steps compressed into one forward pass
 
 
 def temperature_schedule(pos0_raw: np.ndarray, n_iter: int) -> np.ndarray:
@@ -76,13 +76,13 @@ def graph_to_raw_trajectory(data: Data):
 
 def iter_steps(data: Data, teacher_id: int = 0, stride: int = 1) -> Iterator[StepSample]:
     """Yield one StepSample per FR iteration recorded for this graph, in the
-    k-normalized frame. `teacher_id` (Q7): which teacher this trajectory is
-    from -- 0=FR by default, so single-teacher callers (Q4/Q5) don't need to
+    k-normalized frame. `teacher_id`: which teacher this trajectory is
+    from -- 0=FR by default, so single-teacher callers don't need to
     change.
 
-    `stride` (Q10): the number of algorithm steps compressed into one forward
+    `stride`: the number of algorithm steps compressed into one forward
     pass -- Phi_k's stride on the already-recorded trajectory, with NO new data
-    collection (PAPER_PLAN.md §5). For stride=s the target is pos_{t+s} - pos_t
+    collection. For stride=s the target is pos_{t+s} - pos_t
     and tau is the *accumulated* temperature budget over the s-step window
     (sum of temps[t:t+s]), so a trained Phi_k model's readout magnitude is
     conditioned on the total displacement budget it must spend. stride=1
@@ -114,7 +114,7 @@ def iter_steps(data: Data, teacher_id: int = 0, stride: int = 1) -> Iterator[Ste
 
 def load_split(dataset_path: str, seed: int = 42, ratios=(0.8, 0.1, 0.1)) -> dict:
     """Same split convention as the rest of the repo: seeded shuffle,
-    80/10/10 -- reused rather than re-derived so Q4 trains on the identical
+    80/10/10 -- reused rather than re-derived so training uses the identical
     train/val/test partition every other reported number in this repo uses."""
     import random
 

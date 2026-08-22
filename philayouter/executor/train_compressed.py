@@ -1,11 +1,11 @@
 """
 philayouter/executor/train_compressed.py
 
-Q11 (the experiment queue): train Phi_k, the compressed executor. One
+Train Phi_k, the compressed executor. One
 forward pass = k algorithm iterations, with k supplied as a conditioning
-input so it is dial-able at inference (PAPER_PLAN.md §5).
+input so it is dial-able at inference.
 
-Design (recorded in EXPERIMENT_QUEUE.md Q11, 2026-08-13):
+Design:
 - ONE model, `use_stride=True`, trained on mixed strides. Each graph is
   assigned a stride sampled (per epoch) from the candidate set -- stride=1
   anchors the model to exact Phi_1 behaviour while larger strides teach it
@@ -39,7 +39,7 @@ from .structural import StructuralEncoder
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Q11: train the compressed executor (Phi_k)")
+    parser = argparse.ArgumentParser(description="train the compressed executor (Phi_k)")
     parser.add_argument("--dataset_path", default="data/processed/comm_5k_v2_with_encodings.pt")
     parser.add_argument("--output_dir", required=True)
 

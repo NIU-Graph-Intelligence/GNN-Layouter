@@ -1,12 +1,12 @@
 """
-Post-training evaluation for R3 (multi-seed variance, REVISION C2).
+Post-training evaluation: multi-seed variance.
 Run after all 8 training chains complete.
 
 Produces:
   1. eval/predictions/<model>_seed<S>.npz  for seeds 7 and 2024
   2. eval/results/eval_<model>_seed<S>.json
   3. Convergence counts via step_extrapolation
-  4. Appends §12 to result.md
+  4. eval/results/multiseed_variance.md -- the assembled tables
 """
 
 import json
@@ -31,7 +31,7 @@ from eval.metrics import rollout_error, procrustes_mse
 DATASET_PATH = os.path.join(ROOT, "data/processed/comm_5k_v2_with_encodings.pt")
 PRED_DIR = os.path.join(ROOT, "eval/predictions")
 RESULT_DIR = os.path.join(ROOT, "eval/results")
-RESULT_MD = os.path.join(ROOT, "result.md")
+REPORT_MD = os.path.join(RESULT_DIR, "multiseed_variance.md")
 DEVICE = "cuda:0"
 
 MODELS = {
@@ -147,7 +147,7 @@ def fmt_10T(conv, osc, div):
 
 def main():
     print(f"\n{'='*60}")
-    print(f"R3 eval  {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"multi-seed eval  {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"{'='*60}\n")
 
     # Load dataset once
@@ -205,7 +205,7 @@ def main():
                       device, results)
 
     # Write §12
-    write_section_12(results, test_graphs_42, device)
+    write_report(results, test_graphs_42, device)
 
 
 def _eval_one(mname, seed, ckpt_path, src_idx, test_graphs, dataset_list, device, results):
@@ -240,17 +240,17 @@ def _eval_one(mname, seed, ckpt_path, src_idx, test_graphs, dataset_list, device
     }
 
 
-def write_section_12(results, test_graphs, device):
-    """Append §12 to result.md."""
-    print("\n--- Writing result.md §12 ---")
+def write_report(results, test_graphs, device):
+    """Write the multi-seed variance report."""
+    print("\n--- Writing %s ---" % REPORT_MD)
 
     lines = []
     lines.append("")
     lines.append("---")
     lines.append("")
-    lines.append("## 12. Multi-seed variance (R3, REVISION C2) — 2026-08-16")
+    lines.append("# Multi-seed variance — 2026-08-16")
     lines.append("")
-    lines.append("### 12.1 `--split_seed` decoupling (Task 1)")
+    lines.append("## `--split_seed` decoupling")
     lines.append("")
     lines.append("All four training scripts (`train.py`, `train_mpnn.py`, `train_gmpnn.py`,")
     lines.append("`train_forgetnet.py`) gained a `--split_seed` argument (default 42) that is")
@@ -261,7 +261,7 @@ def write_section_12(results, test_graphs, device):
     lines.append("same graph ordering). The 500 test graphs are fixed at `split_seed=42`")
     lines.append("across all three training seeds.")
     lines.append("")
-    lines.append("### 12.2 Training configuration")
+    lines.append("## Training configuration")
     lines.append("")
     lines.append("Eight training runs: four models × two new seeds (7, 2024), `--split_seed")
     lines.append("42` fixed throughout. Identical hyperparameters to seed-42 runs: hidden_dim")
@@ -269,11 +269,11 @@ def write_section_12(results, test_graphs, device):
     lines.append("Adam, 50 epochs (~215 s/epoch for phi1). GPU0 chain: phi1/gmpnn; GPU1 chain:")
     lines.append("mpnn/forgetnet. Checkpoint naming: `<model>_seed<SEED>/executor_best.pt`.")
     lines.append("")
-    lines.append("### 12.3 Step-50 Procrustes fidelity × seed")
+    lines.append("## Step-50 Procrustes fidelity × seed")
     lines.append("")
     lines.append("Procrustes MSE reported as the mean over 500 fixed test graphs (split_seed=42),")
     lines.append("scored via `eval/dump_executor_predictions.py` + `eval/score_predictions.py`")
-    lines.append("(same pipeline as all §9 measurements). Lower is better.")
+    lines.append("(the same pipeline as every reported measurement). Lower is better.")
     lines.append("")
 
     # Build the main table
@@ -312,7 +312,7 @@ def write_section_12(results, test_graphs, device):
     lines.append("")
 
     # 10T convergence table
-    lines.append("### 12.4 Step-extrapolation (10T = 500 steps, 30 test graphs each)")
+    lines.append("## Step-extrapolation (10T = 500 steps, 30 test graphs each)")
     lines.append("")
     lines.append("| model | seed 42 | seed 7 | seed 2024 |")
     lines.append("|---|---|---|---|")
@@ -328,7 +328,7 @@ def write_section_12(results, test_graphs, device):
     lines.append("")
 
     # Paired test
-    lines.append("### 12.5 Paired test: Φ-layouter vs unaligned processors (500 graphs, per-seed)")
+    lines.append("## Paired test: Φ-layouter vs unaligned processors (500 graphs, per-seed)")
     lines.append("")
     lines.append("Signed per-graph difference: `(unaligned_pmse − phi1_pmse)` — positive means")
     lines.append("phi1 is better (lower Procrustes error). All comparisons use the same 500")
@@ -373,7 +373,7 @@ def write_section_12(results, test_graphs, device):
     lines.append("")
 
     # What the numbers establish
-    lines.append("### 12.6 What these numbers establish (and do not)")
+    lines.append("## What these numbers establish (and do not)")
     lines.append("")
     lines.append("- **Variance over initialization:** the three seeds differ only in")
     lines.append("  `torch.manual_seed` and `random.seed`; the train/val/test partition")
@@ -382,12 +382,12 @@ def write_section_12(results, test_graphs, device):
     lines.append("  500 graphs are held out; that is not measured here.")
     lines.append("- **Not variance over architecture:** only four fixed architectures are")
     lines.append("  tested; no hyperparameter or depth sweep is included.")
-    lines.append("- **Paired test validity:** all per-graph differences in §12.5 are")
+    lines.append("- **Paired test validity:** all per-graph differences in the paired test are")
     lines.append("  computed over the same 500-graph test set (split_seed=42), so the")
-    lines.append("  paired comparison is valid. A negative pooled mean difference in")
-    lines.append("  §12.5 would indicate a seed where an unaligned processor beats Φ-layouter")
+    lines.append("  paired comparison is valid. A negative pooled mean difference")
+    lines.append("  would indicate a seed where an unaligned processor beats Φ-layouter")
     lines.append("  on average; a positive difference means Φ-layouter is better.")
-    lines.append("- The 500-graph per-instance CI already in the paper (§9 distributions)")
+    lines.append("- The 500-graph per-instance CI already in the paper")
     lines.append("  measures test-instance variance; this section adds seed-variance.")
     lines.append("  The two are complementary, not substitutes.")
 
@@ -410,20 +410,21 @@ def write_section_12(results, test_graphs, device):
         flag_block = ["", "**FLAG — unexpected result:**"]
         flag_block.extend(flag_lines)
         flag_block.append("")
-        insert_at = next(i for i, l in enumerate(lines) if l.startswith("## 12."))
+        insert_at = next(i for i, l in enumerate(lines) if l.startswith("# Multi-seed"))
         for i, fl in enumerate(flag_block):
             lines.insert(insert_at + i, fl)
-        print("\n*** FLAG: unexpected result — see §12 header ***")
+        print("\n*** FLAG: unexpected result — see the report header ***")
         for fl in flag_lines:
             print(fl)
 
     section_text = "\n".join(lines) + "\n"
 
-    with open(RESULT_MD, "a") as f:
+    os.makedirs(RESULT_DIR, exist_ok=True)
+    with open(REPORT_MD, "w") as f:
         f.write(section_text)
 
-    print(f"\nAppended §12 to {RESULT_MD}")
-    print(f"Section length: {len(lines)} lines")
+    print(f"\nWrote {REPORT_MD}")
+    print(f"Report length: {len(lines)} lines")
 
 
 if __name__ == "__main__":

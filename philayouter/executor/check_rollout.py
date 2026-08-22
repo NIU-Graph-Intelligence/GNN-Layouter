@@ -1,10 +1,9 @@
 """
 philayouter/executor/check_rollout.py
 
-End-to-end check for Q3 (the experiment queue): StructuralEncoder is
-called once per graph, its output reused unchanged across a multi-step
-rollout, and the geometric neighbourhood + readout are recomputed each step.
-Confirms equivariance survives composition across T steps (not just one),
+End-to-end check: StructuralEncoder is called once per graph, its output
+reused unchanged across a multi-step rollout, and the geometric neighbourhood
++ readout are recomputed each step. Confirms equivariance survives composition across T steps (not just one),
 since that's the actual usage pattern training/inference will follow, and a
 bug that only shows up after several steps (e.g. drift from float precision,
 or an accidental dependence on absolute step count) wouldn't be caught by
@@ -39,7 +38,7 @@ def _random_rigid_motion(reflect: bool, generator: torch.Generator):
 def _random_graph(n: int, edge_prob: float, generator: torch.Generator):
     adj = torch.rand(n, n, generator=generator) < edge_prob
     adj.fill_diagonal_(False)
-    # symmetrize so every graph has a well-defined Laplacian (Q3 needs a
+    # symmetrize so every graph has a well-defined Laplacian (the check needs a
     # connected-ish undirected topology; the training data itself is
     # always undirected community graphs)
     adj = adj | adj.T

@@ -1,15 +1,15 @@
 """
 eval/collapse_analysis.py
 
-Coincident-node collapse measurement on prediction .npz files — the Q18/Q19
-(Q28 too) analysis, made reusable and reproducible.
+Coincident-node collapse measurement on prediction .npz files, made
+reusable and reproducible.
 
 Definition (same as the paper's GND-collapse finding): two nodes are
 "coincident" if their pairwise embedded distance is below 1e-6 (float-level
 identical coordinates). A graph is "affected" if it contains at least one such
 pair. GND (topology-only + Laplacian PE) collapses in 92.8% of graphs; the
-Q18 control (GND + random feature) relieves it partially (86.4%); the Q19
-control (CoRe-GD with random+beacon features removed, Laplacian-only input)
+random-feature control (GND + random feature) relieves it partially (86.4%);
+the CoRe-GD control (random+beacon features removed, Laplacian-only input)
 is expected to RE-introduce it if input symmetry drives the collapse.
 
 This is a measurement of the prediction file, not of the model: it consumes
@@ -33,7 +33,7 @@ from scipy.spatial.distance import pdist
 ROOT = Path(__file__).resolve().parents[1]
 PRED_DIR = ROOT / "eval" / "predictions"
 
-THRESHOLD = 1e-6  # float-level identical coordinates (matches Q18/Q19)
+THRESHOLD = 1e-6  # float-level identical coordinates
 
 
 def collapse_counts(positions: np.ndarray, n_nodes: np.ndarray, threshold: float = THRESHOLD):

@@ -1,10 +1,9 @@
 """
 philayouter/executor/benchmark_wallclock.py
 
-Q22 (the experiment queue, PAPER_PLAN.md §7): wall-clock / sequential-
-depth benchmark. The big-data payoff row: to reach FR's step-50 result, how
-many sequential passes and how much wall-clock time does each method need, on
-the SAME corpus graphs at increasing N?
+Wall-clock / sequential-depth benchmark. The big-data payoff row: to reach
+FR's step-50 result, how many sequential passes and how much wall-clock time
+does each method need, on the SAME corpus graphs at increasing N?
 
 Methods measured here:
   1. FR (networkx spring_layout)      -- the teacher, O(N^2) per step
@@ -12,14 +11,14 @@ Methods measured here:
   3. Executor Phi_1 (EquivariantExecutor) -- one forward = one FR step, O(N k)
   4. sfdp (graphviz) -- multilevel force-directed reference; a SINGLE run to
      convergence, not per-iteration, so it is reported as total wall-clock.
-     Excluded as a teacher (PAPER_PLAN §6, multilevel step crosses coarsening
-     levels) but required in the wall-clock table (PAPER_PLAN §7).
+     Excluded as a teacher (its multilevel step crosses coarsening
+     levels) but required in the wall-clock table.
   [cuGraph FA2 is NOT installed -- still flagged as a gated large install.]
 
-Timing boundary (per §7): per-step geometric neighbourhood construction +
+Timing boundary: per-step geometric neighbourhood construction +
 model forward + host-device transfers + full T-step rollout. Structural
 encoding is a one-time per-graph cost, reported separately and EXCLUDED from
-per-step (the table says so, per §7). FR / BH-FR have no such stage.
+per-step (the table says so). FR / BH-FR have no such stage.
 
 Sequential depth: FR and BH-FR need T=50 steps; Phi_1 needs T=50 forwards;
 Phi_k needs ceil(50/k) forwards (k dial-able; reported at k in {8, 25}).
@@ -82,7 +81,7 @@ def fr_networkx(ei: np.ndarray, n: int, iters: int = FR_ITERS, n_measure: int = 
 
 def fa2_cugraph(ei: np.ndarray, n: int, max_iter: int = FR_ITERS,
                 rapids_python: str = None):
-    """Time cuGraph ForceAtlas2 on this graph (PAPER_PLAN §7 row). cuGraph's
+    """Time cuGraph ForceAtlas2 on this graph (wall-clock table row). cuGraph's
     force_atlas2 is a single batched GPU call that runs max_iter iterations
     internally, so -- like sfdp -- it is reported as TOTAL wall-clock for
     max_iter=50 (matching the step budget FR/BH-FR/Phi_1 each spend). Requires
@@ -196,9 +195,9 @@ def executor(encoder, model, ei: torch.Tensor, n: int, device, T: int,
     per-step wall-clock and the per-step split. Structural encoding excluded
     (one-time, reported by the caller via encoder timing). With
     skip_encoding=True the node_feat is random, so the per-step pipeline cost
-    is measured WITHOUT the LapPE eigsh wall (Q14 finding: eigsh at N=10^6 is
+    is measured WITHOUT the LapPE eigsh wall (measured: eigsh at N=10^6 is
     minutes-to-tens-of-minutes on degenerate spectra); the encoding cost is
-    stated separately in the output. `chunk` bounds per-edge memory (Q22:
+    stated separately in the output. `chunk` bounds per-edge memory (the
     chunked model forward runs N=10^6 that the monolithic readout OOMs on)."""
     k = float(np.sqrt(1.0 / n))
     pos = grid_init(n).astype(np.float32)
@@ -233,7 +232,7 @@ def executor(encoder, model, ei: torch.Tensor, n: int, device, T: int,
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Q22 wall-clock / sequential-depth benchmark")
+    ap = argparse.ArgumentParser(description="wall-clock / sequential-depth benchmark")
     ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--corpora", default="data/corpora")
     ap.add_argument("--families", nargs="+", default=["grid", "er"])
@@ -243,15 +242,15 @@ def main():
     ap.add_argument("--skip_encoding", action="store_true",
                     help="random node_feat instead of LapPE -- measures the "
                          "per-step pipeline at N where the one-time eigsh is "
-                         "a wall (N=10^6, Q14 finding). Encoding cost reported "
+                         "a wall (N=10^6, measured). Encoding cost reported "
                          "as '>45 min' rather than measured per-step.")
     ap.add_argument("--sfdp_bin", default=None,
                     help="path to graphviz sfdp (e.g. $(which sfdp)). "
                          "When set, sfdp total wall-clock is measured and added "
-                         "to the table (PAPER_PLAN §7).")
+                         "to the table.")
     ap.add_argument("--chunk", type=int, default=None,
                     help="per-edge chunk size for the executor forward -- bounds "
-                         "GPU memory so N=10^6 runs instead of OOMing (Q22).")
+                         "GPU memory so N=10^6 runs instead of OOMing.")
     ap.add_argument("--cugraph_python", default=None,
                     help="path to a RAPIDS venv python (cugraph + libcugraph with "
                          "LD_LIBRARY_PATH set). When set, the cuGraph ForceAtlas2 "
@@ -286,7 +285,7 @@ def main():
     model.eval()
     print(f"loaded checkpoint {args.checkpoint} (val {ckpt.get('val_loss'):.6f})")
 
-    print("\nTIMING BOUNDARY (PAPER_PLAN §7): per-step = geometric kNN + model "
+    print("\nTIMING BOUNDARY: per-step = geometric kNN + model "
           "forward + host-device + full rollout. Structural encoding is a "
           "one-time per-graph cost, reported separately, EXCLUDED from per-step. "
           "FR/BH-FR have no encoding stage. sfdp is multilevel: a single run to "

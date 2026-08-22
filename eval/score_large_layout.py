@@ -1,7 +1,7 @@
 """
 eval/score_large_layout.py
 
-R1 (rider brief 2026-08-16): sampled stress + neighbourhood-preservation scorer
+Sampled stress + neighbourhood-preservation scorer
 for layouts on graphs too large for exact all-pairs stress. Exact stress is
 O(N^2) and infeasible at N = 10^5-10^6; this scores a layout by sampling node
 pairs and reporting a sampling standard error alongside every number, because
@@ -335,7 +335,7 @@ def main():
     ap.add_argument("--compare_exact", action="store_true",
                     help="also compute exact metrics.py stress and exact NP@k "
                          "(affordable only at N ~ 10^3); prints both. This is "
-                         "the R1.1 validation gate.")
+                         "the validation gate.")
     ap.add_argument("--lcc", action="store_true",
                     help="restrict scoring to the largest connected component "
                          "(drop other components and renumber). Required for "

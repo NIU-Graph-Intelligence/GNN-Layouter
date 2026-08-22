@@ -1,11 +1,11 @@
 """
 eval/generate_large_layouts.py
 
-R1 (rider brief 2026-08-16): produce the three layout sources that R1.2 scores
+Produce the three layout sources that score_large_layout_table.py scores
 on the same synthetic corpora at N = 10^5 and 10^6:
 
   phi      -- the Phi-layouter rollout (evaluate_scale.py rollout_scale, same
-              k-unit init and T=50 as the Q14 size-extrapolation runs), saved
+              k-unit init and T=50 as the size-extrapolation runs), saved
               to disk instead of only being timed.
   sfdp     -- graphviz sfdp (multilevel), run to convergence; layout saved.
   cuGraph FA2 -- cugraph force_atlas2 (one batched GPU call of max_iter), run
@@ -20,7 +20,7 @@ Usage:
         --checkpoint checkpoints/phi1_laponly_v1/executor_best.pt \\
         --corpora data/corpora --sizes 100000 1000000 \\
         --device cuda:0 --T 50 --chunk 500000 --skip_encoding \\
-        --sfdp_bin /home/lei/miniconda3/bin/sfdp \\
+        --sfdp_bin $(which sfdp) \\
         --cugraph_python /tmp/opencode/cugraph_venv/bin/python \\
         --out eval/results/large_layouts
 """
@@ -159,7 +159,7 @@ def fa2_layout(edge_index: np.ndarray, n: int, rapids_python: str, max_iter=50,
 
 
 def main():
-    ap = argparse.ArgumentParser(description="R1.2: save phi/sfdp/FA2 layouts")
+    ap = argparse.ArgumentParser(description="save phi/sfdp/FA2 layouts")
     ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--corpora", default="data/corpora")
     ap.add_argument("--sizes", type=int, nargs="+", default=[100000, 1000000])

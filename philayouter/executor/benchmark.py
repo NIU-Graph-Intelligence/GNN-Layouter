@@ -1,10 +1,10 @@
 """
 philayouter/executor/benchmark.py
 
-Q13 (the experiment queue) timing harness: measures the full per-step
+Timing harness: measures the full per-step
 cost of rolling out a trained EquivariantExecutor on synthetic graphs of
-increasing size, so the paper's timing table (PAPER_PLAN.md §7, "Sequential
-depth + wall-clock" row) has an honest number for OUR method that includes
+increasing size, so the paper's timing table (the
+sequential-depth / wall-clock row) has an honest number for OUR method that includes
 every stage the timing boundary requires:
 
   - structural encoding (one-time per graph, cached for the whole rollout)
@@ -14,9 +14,10 @@ every stage the timing boundary requires:
   - the full T-step rollout
 
 The point is not to win a speed race -- it is to have a reproducible number
-with a stated timing boundary, comparable to the baseline table once Q22
-benchmarks cuGraph FA2 / sfdp on the same graphs. Reported per step and per
-rollout, with the boundary stated explicitly in the output.
+with a stated timing boundary, comparable to the baseline table once
+benchmark_wallclock.py measures cuGraph FA2 / sfdp on the same graphs.
+Reported per step and per rollout, with the boundary stated explicitly in the
+output.
 
 Memory-bounded: at N=10^5-10^6 the geometric neighbourhood is built with the
 "kd" backend (scipy cKDTree, O(N log N)) and brute-force is used only for
@@ -98,7 +99,7 @@ def bench_size(n: int, args, device: torch.device):
         # one-time structural encoding (timed separately; cached for rollout)
         if args.skip_encoding:
             # Random node_feat: measures the per-step pipeline cost WITHOUT the
-            # RRWP dense-mixing wall (Q14 blocker). Structural encoding is the
+            # RRWP dense-mixing wall. Structural encoding is the
             # same one-time cost for any fixed graph, so excluding it here keeps
             # the per-step numbers honest without paying 36s+ at N=10^4 / infeasible
             # at N=10^5. The timing boundary is stated in the output header.
@@ -138,7 +139,7 @@ def bench_size(n: int, args, device: torch.device):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Q13: timing harness for the equivariant executor")
+    parser = argparse.ArgumentParser(description="timing harness for the equivariant executor")
     parser.add_argument("--n_list", type=int, nargs="+", default=[100, 1000, 10000])
     parser.add_argument("--k_geo", type=int, default=10)
     parser.add_argument("--T", type=int, default=20)
@@ -154,19 +155,19 @@ def main():
     parser.add_argument("--skip_encoding", action="store_true",
                         help="use random node_feat instead of structural encoding -- for "
                              "per-step pipeline timing at N where RRWP is infeasible "
-                             "(N>10^4, Q14 blocker). Encoding reported as NaN.")
+                             "(N>10^4, the RRWP encoding wall). Encoding reported as NaN.")
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
     print(f"device: {device}   k_geo={args.k_geo}   T={args.T}   knn_backend={args.knn_backend}")
     print("timing boundary: per-step geometric kNN + model forward + host-device "
-          "transfers + full rollout (PAPER_PLAN.md §7). Structural encoding is a "
+          "transfers + full rollout. Structural encoding is a "
           "one-time per-graph cost reported separately (excluded from per-step).")
     if args.skip_encoding:
         print("note: --skip_encoding set -- encoding omitted at all N (reported as "
               "NaN); per-step numbers are the honest pipeline cost independent of "
-              "the Q14 RRWP encoding wall.")
+              "the RRWP encoding wall.")
 
     results = []
     for n in args.n_list:

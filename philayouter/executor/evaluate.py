@@ -1,7 +1,7 @@
 """
 philayouter/executor/evaluate.py
 
-Q5 (the experiment queue): fidelity and step-extrapolation for a trained
+Fidelity and step-extrapolation for a trained
 Phi_1 checkpoint against the FR trajectories in comm_5k_v2_with_encodings.pt.
 
 Fidelity: roll the model out for T=50 steps (matching the recorded window)
@@ -43,24 +43,24 @@ def load_checkpoint(path: str, device: torch.device):
         rw_k=args["rw_k"],
         use_rrwp=args.get("use_rrwp", True),  # old checkpoints predate the flag
     ).to(device)
-    # num_teachers: Q7 checkpoints store a `teachers` dict (see train_multi.py);
+    # num_teachers: multi-teacher checkpoints store a `teachers` dict (see train_multi.py);
     # single-teacher checkpoints predate both and default to 1.
     num_teachers = ckpt.get("teachers", None)
     num_teachers = len(num_teachers) if isinstance(num_teachers, dict) else 1
-    # use_stride: Q11 (Phi_k) checkpoints store a `strides` list; Phi_1
+    # use_stride: compressed (Phi_k) checkpoints store a `strides` list; Phi_1
     # checkpoints predate the flag and default to False.
     use_stride = isinstance(ckpt.get("strides", None), list)
-    # use_tau: Q15 no-temperature ablation checkpoints store the flag; other
+    # use_tau: no-temperature ablation checkpoints store the flag; other
     # checkpoints predate it and default to True.
     use_tau = args.get("use_tau", True)
-    # use_geo_mp: Q16 no-geometric-rewiring ablation checkpoints store it;
+    # use_geo_mp: no-geometric-rewiring ablation checkpoints store it;
     # others default to True.
     use_geo_mp = args.get("use_geo_mp", True)
-    # use_equiv_readout: Q17 non-equivariant-readout ablation checkpoints
+    # use_equiv_readout: non-equivariant-readout ablation checkpoints
     # store it; others default to True.
     use_equiv_readout = args.get("use_equiv_readout", True)
     if ckpt.get("model_type") == "MpnnExecutor":
-        # Q20 baseline: plain MPNN, no equivariance machinery.
+        # Baseline: plain MPNN, no equivariance machinery.
         from .mpnn import MpnnExecutor
 
         model = MpnnExecutor(
@@ -69,7 +69,7 @@ def load_checkpoint(path: str, device: torch.device):
             num_layers=args.get("num_layers", 3),
         ).to(device)
     elif ckpt.get("model_type") == "TripletGMPNN":
-        # Q25 baseline: strongest standard NAR processor (triplet GMPNN).
+        # Baseline: strongest standard NAR processor (triplet GMPNN).
         from .gmpnn import TripletGMPNN
 
         model = TripletGMPNN(
@@ -78,7 +78,7 @@ def load_checkpoint(path: str, device: torch.device):
             num_layers=args.get("num_layers", 3),
         ).to(device)
     elif ckpt.get("model_type") == "GForgetNet":
-        # Q26 baseline: gated-history executor (Markov property control).
+        # Baseline: gated-history executor (Markov property control).
         from .forgetnet import GForgetNet
 
         model = GForgetNet(
@@ -108,11 +108,11 @@ def load_checkpoint(path: str, device: torch.device):
 def rollout_model(encoder, model, data, device, n_steps: int, temps_raw: np.ndarray, teacher_id: int = 0, stride: int = 1):
     """Roll the model out for n_steps, in k-units internally, returning raw-
     frame positions [n_steps, N, 2] (step 1..n_steps, matching y_traj's
-    convention). `teacher_id` (Q7): which teacher's conditioning vector to
+    convention). `teacher_id`: which teacher's conditioning vector to
     feed -- used for the conditioning-swap matrix (evaluate a trained-in
     teacher against every teacher's ground truth).
 
-    `stride` (Q11, Phi_k): how many algorithm steps one forward pass covers.
+    `stride` (Phi_k): how many algorithm steps one forward pass covers.
     With stride=s the model advances the layout by s recorded iterations per
     forward, so reaching FR step t takes ceil(t/s) forwards and `temps_raw`
     entries are consumed s at a time -- the temperature fed at step j is the
@@ -219,7 +219,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--teacher_id", type=int, default=0,
                         help="which teacher's conditioning vector to feed during "
-                             "the rollout (Q7 conditioning-swap matrix). For a "
+                             "the rollout (the conditioning-swap matrix). For a "
                              "multi-teacher checkpoint, eval with each teacher_id "
                              "against each dataset's ground truth.")
     parser.add_argument("--dataset_label", default="FR",

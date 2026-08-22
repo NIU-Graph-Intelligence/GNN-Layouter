@@ -1,5 +1,5 @@
 """
-eval/equivariance_check.py  --  R1-v2 Task 3/4: equivariance sanity check.
+eval/equivariance_check.py  --  equivariance sanity check.
 
 Verifies that the BH FR teacher is equivariant under node-label permutation:
   BH(permute(G, pi), permute(X0, pi)) = permute(BH(G, X0), pi)
@@ -112,7 +112,7 @@ def check_equivariance(family, n, ei, perm_seed=42_000):
 
 def main():
     import os
-    print(f"R1-v2 Task 3/4: equivariance sanity check (BH teacher, N=1000 corpus)\n"
+    print(f"Equivariance sanity check (BH teacher, N=1000 corpus)\n"
           f"Threshold: {PASS_THRESHOLD:.0e} (residual is FP non-commutativity)\n")
 
     families = ["grid", "rgg", "scale_free", "er"]
@@ -145,7 +145,7 @@ def main():
             "changes under permutation. Not a physics error.")
     out = OUT_DIR / "equivariance_check.json"
     with open(out, "w") as f:
-        json.dump({"description": "R1-v2 BH teacher equivariance check (fixed X0 permutation)",
+        json.dump({"description": "BH teacher equivariance check (fixed X0 permutation)",
                    "method": "BH_FR", "T": T, "theta": THETA,
                    "pass_threshold": PASS_THRESHOLD,
                    "fp_commutativity_note": note,

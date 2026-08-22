@@ -3,7 +3,7 @@ philayouter/executor/check_data_pipeline.py
 
 Verifies philayouter/executor/data.py's raw-frame reconstruction and temperature
 schedule against the recorded trajectories in comm_5k_v2_with_encodings.pt,
-before trusting either as a training target (Q4).
+before trusting either as a training target.
 
 FR's step is displacement * (temperature / ||displacement||), so
 ||pos_after - pos_before|| == temperature exactly for any node whose raw

@@ -1,7 +1,7 @@
 """
 eval/generate_dynamics_baselines.py
 
-Q27 (the experiment queue): simple dynamics baselines -- trajectory-
+Simple dynamics baselines -- trajectory-
 smoothness controls that need NO training. They check the trained models are
 not exploiting the fact that FR trajectories are smooth (small per-step
 moves) instead of actually learning attraction / repulsion / the temperature

@@ -1,9 +1,8 @@
 """
 philayouter/executor/check_equivariance.py
 
-Numeric equivariance check for EquivariantExecutor -- this IS the definition
-of done for Q2 in the experiment queue. Verifies the construction-level
-guarantee claimed in PAPER_PLAN.md §4 actually holds in code: for a random
+Numeric equivariance check for EquivariantExecutor. Verifies that the
+construction-level guarantee the paper claims actually holds in code: for a random
 rigid motion (rotation, translation, and reflection) applied to the input
 positions, the model's output displacement must transform the same way.
 

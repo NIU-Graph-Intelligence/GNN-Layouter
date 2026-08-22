@@ -1,9 +1,9 @@
 """
 philayouter/executor/train_multi.py
 
-Q7 (the experiment queue): train Phi_1 with a 3-teacher conditioning
+Train Phi_1 with a 3-teacher conditioning
 vector -- FR, FA2, Kamada-Kawai as values of the `teacher_id` embedding
-`EquivariantExecutor` has carried unused since Q2.
+`EquivariantExecutor` has carried unused until now.
 
 The three datasets (comm_5k_v2_with_encodings.pt, comm_5k_fa2_with_encodings.pt,
 comm_5k_kk_with_encodings.pt) are the same 5000 graphs in the same order, so
@@ -43,7 +43,7 @@ TEACHERS = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Q7: train Phi_1 with 3-teacher conditioning")
+    parser = argparse.ArgumentParser(description="train Phi_1 with 3-teacher conditioning")
     parser.add_argument("--output_dir", required=True)
 
     parser.add_argument("--hidden_dim", type=int, default=64)

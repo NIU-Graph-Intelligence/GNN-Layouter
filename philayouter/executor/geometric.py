@@ -2,15 +2,15 @@
 philayouter/executor/geometric.py
 
 Geometric neighbourhood construction for the equivariant executor
-(PAPER_PLAN.md §4): repulsion is geometrically local, not topologically
+repulsion is geometrically local, not topologically
 local, so the neighbourhood used for it must be rebuilt from the current
 positions every step, not read off the graph's static topology.
 
-Backends (Q13, size-extrapolation infra):
+Backends (size-extrapolation infrastructure):
 
   brute  -- O(N^2) cdist + topk. Correct and dependency-free, fine at the
             training scale (N=20-50) and the small eval set. This is the
-            default so existing behaviour and the Q4/Q5/Q7 checkpoints are
+            default so existing behaviour and the released checkpoints are
             untouched.
   kd     -- exact kNN via scipy.spatial.cKDTree, O(N log N). The scalable
             path for N=10^2-10^6. Same neighbours as brute force (verified
@@ -18,7 +18,7 @@ Backends (Q13, size-extrapolation infra):
             CPU-only; positions are moved to numpy for the query and the
             resulting edge_index is returned on the original device. Use
             only when the graph is too big for brute force; the host-device
-            transfer is itself part of the timing boundary Q13's harness
+            transfer is itself part of the timing boundary benchmark.py
             must measure (benchmark.py), so it is not hidden here.
 """
 
@@ -92,7 +92,7 @@ def merge_edge_sets(
     deduplicated by (source, target), with a boolean membership flag per
     input set. An edge present in both keeps both flags True. This is what
     lets a single readout sum over "everything relevant to v this step"
-    (PAPER_PLAN.md §4's dX[v] formula) while still telling phi whether a
+    (the paper's dX[v] formula) while still telling phi whether a
     given neighbour is a topological one, a geometric one, or both.
 
     Returns:

@@ -1,10 +1,10 @@
 """
 eval/convert_real_graphs.py
 
-R2 (rider brief 2026-08-16): convert real graphs that arrive via scp at
+Convert real graphs that arrive at
 data/corpora/real/ (Matrix Market .mtx or two-column edge lists) into the same
 sparse representation generate_corpus.py emits -- a [2,E] int64 torch tensor
-per graph saved as <name>.pt -- so evaluate_scale.py and the R1.1 scorer run
+per graph saved as <name>.pt -- so evaluate_scale.py and the sampled scorer run
 on them unchanged.
 
 Node ids are renumbered to 0..n-1 (real corpora do not use contiguous ids);

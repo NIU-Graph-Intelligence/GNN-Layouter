@@ -1,7 +1,7 @@
 """
 philayouter/executor/train_gmpnn.py
 
-Q25 (the experiment queue): train the Triplet-GMPNN executor baseline.
+Train the Triplet-GMPNN executor baseline.
 
 IDENTICAL to train.py / train_mpnn.py (same data, seed-42 split, per-graph
 training, k-unit normalization, loss, optimizer) EXCEPT the model is
@@ -31,7 +31,7 @@ from .structural import StructuralEncoder
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Q25: train the Triplet-GMPNN executor baseline")
+    parser = argparse.ArgumentParser(description="train the Triplet-GMPNN executor baseline")
     parser.add_argument("--dataset_path", default="data/processed/comm_5k_v2_with_encodings.pt")
     parser.add_argument("--output_dir", required=True)
 

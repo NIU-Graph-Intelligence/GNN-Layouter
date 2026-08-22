@@ -1,7 +1,7 @@
 """
 philayouter/executor/check_knn_backends.py
 
-Q13 (the experiment queue): verifies the scalable "kd" kNN backend
+Verifies that the scalable "kd" kNN backend
 (scipy.cKDTree, O(N log N)) produces the SAME neighbourhood as the brute-force
 "brute" backend (cdist+topk, O(N^2)) before trusting it at large N. The two
 must agree edge-for-edge for every node, because training/eval results are

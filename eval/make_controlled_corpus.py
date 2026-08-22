@@ -1,5 +1,5 @@
 """
-eval/make_r1v2_corpus.py  --  R1-v2 Task 3: controlled large-N corpus.
+eval/make_controlled_corpus.py  --  controlled large-N corpus.
 
 Generates N=10^5 graphs with 4 families (grid, rgg, scale_free/BA, er) and
 3 independent graph seeds (101, 202, 303).  After edge construction and any
@@ -22,7 +22,7 @@ Output: data/corpora/r1_v2/  (does not touch data/corpora/*.pt)
 Provenance: data/corpora/r1_v2/provenance.json
 
 Usage:
-    .venv/bin/python eval/make_r1v2_corpus.py [--n 100000]
+    .venv/bin/python eval/make_controlled_corpus.py [--n 100000]
 """
 
 import json
@@ -243,7 +243,7 @@ def main():
     ap.add_argument("--n", type=int, default=N_DEFAULT)
     args = ap.parse_args()
     n = args.n
-    print(f"R1-v2 Task 3: controlled corpus  N={n:,}  seeds={GRAPH_SEEDS}")
+    print(f"controlled corpus  N={n:,}  seeds={GRAPH_SEEDS}")
     print(f"RGG avg_deg=6 (supercritical), ER avg_deg=4 (geometric sampling)")
     print(f"Output: {OUT_DIR}\n")
 
@@ -272,7 +272,7 @@ def main():
     for p in all_prov:
         existing[p["file"]] = p
     with open(prov_path, "w") as f:
-        json.dump({"description": "R1-v2 controlled corpus provenance",
+        json.dump({"description": "controlled corpus provenance",
                    "n": n, "graph_seeds": GRAPH_SEEDS, "families": FAMILIES,
                    "perm_seed_base": PERM_SEED_BASE,
                    "lcc_policy": "LCC for rgg/er; connect if < 80%; permute after",

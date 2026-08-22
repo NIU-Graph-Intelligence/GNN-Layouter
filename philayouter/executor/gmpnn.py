@@ -1,7 +1,7 @@
 """
 philayouter/executor/gmpnn.py
 
-Q25 (the experiment queue): Triplet-GMPNN executor baseline (Ibarz et al.
+Triplet-GMPNN executor baseline (Ibarz et al.
 2022, "A Generalist Neural Algorithmic Learner", LoG 2022).
 
 The strongest standard NAR processor. This is the control that answers "we did
@@ -73,7 +73,7 @@ class _TripletSend(MessagePassing):
 
 
 class TripletGMPNN(nn.Module):
-    """Triplet-GMPNN step operator (Q25). Two-pass triplet message passing."""
+    """Triplet-GMPNN step operator. Two-pass triplet message passing."""
 
     def __init__(
         self,
